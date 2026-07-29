@@ -1,3 +1,5 @@
+from multiprocessing import process
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -35,8 +37,7 @@ finally:
 # CORS Configuration
 # -------------------------------
 origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
+    process.env.get("VITE_BASE_URL")
 ]
 
 app.add_middleware(
