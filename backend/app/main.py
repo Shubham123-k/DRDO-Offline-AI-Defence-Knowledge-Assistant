@@ -1,6 +1,8 @@
 import os
 from dotenv import load_dotenv
 
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -37,11 +39,11 @@ finally:
 # -------------------------------
 # CORS Configuration
 # -------------------------------
-base_url = os.getenv("FLASK_BASE_URL")
+frontend_url = os.getenv("FRONTEND_URL")
     
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[base_url],
+    allow_origins=[frontend_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
