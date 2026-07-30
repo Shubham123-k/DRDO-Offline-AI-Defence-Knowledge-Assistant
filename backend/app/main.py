@@ -1,4 +1,5 @@
-from multiprocessing import process
+import os
+from dotenv import load_dotenv
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -36,13 +37,11 @@ finally:
 # -------------------------------
 # CORS Configuration
 # -------------------------------
-origins = [
-    process.env.get("VITE_BASE_URL")
-]
-
+base_url = os.getenv("FLASK_BASE_URL")
+    
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[base_url],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
