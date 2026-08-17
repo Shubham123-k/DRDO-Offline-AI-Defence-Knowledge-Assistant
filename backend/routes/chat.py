@@ -1,7 +1,4 @@
-from fastapi import (
-    APIRouter,
-    Depends,
-)
+from fastapi import ( APIRouter, Depends )
 
 from sqlalchemy.orm import Session
 
@@ -37,7 +34,12 @@ def new_chat(
     db.commit()
     db.refresh(conversation)
 
-    return conversation
+    return {
+    "id": conversation.id,
+    "title": conversation.title,
+    "pinned": conversation.pinned,
+    "created_at": conversation.created_at,
+}
 
 @router.get("/")
 def get_chats(
@@ -51,7 +53,8 @@ def get_chats(
             Conversation.user_id == current_user.id
         )
         .order_by(
-            Conversation.created_at.desc()
+        Conversation.pinned.desc(),
+        Conversation.updated_at.desc(),
         )
         .all()
     )
@@ -89,6 +92,7 @@ def add_message(
     )
 
     db.add(message)
+    conversation.updated_at = message.created_at
     db.commit()
     db.refresh(message)
 
@@ -221,4 +225,38 @@ def get_chat(
     return {
         "conversation": conversation,
         "messages": messages,
+    }
+    
+@router.delete("/{conversation_id}")
+def delete_chat(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    conversation = (
+        db.query(Conversation)
+        .filter(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if conversation is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found.",
+        )
+
+    # Delete all messages first
+    db.query(Message).filter(
+        Message.conversation_id == conversation_id
+    ).delete()
+
+    db.delete(conversation)
+
+    db.commit()
+
+    return {
+        "message": "Conversation deleted successfully."
     }

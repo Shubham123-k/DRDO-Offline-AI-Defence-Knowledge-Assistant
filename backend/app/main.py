@@ -17,10 +17,14 @@ from routes.ai import router as ai_router
 from routes.audit import router as audit_router
 from routes.chat import router as chat_router
 
+from models.conversation import Conversation
 from database.db import SessionLocal
 from services.admin_initializer import create_default_admin
 from routes import admin
 from routes import document
+from routes.conversation import (
+    router as conversation_router,
+)
 
 Base.metadata.create_all(bind=engine)
 
@@ -36,9 +40,6 @@ try:
 finally:
     db.close()
 
-# -------------------------------
-# CORS Configuration
-# -------------------------------
 frontend_url = os.getenv("FRONTEND_URL")
     
 app.add_middleware(
@@ -49,9 +50,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -------------------------------
-# Register Routes
-# -------------------------------
 app.include_router(auth_router)
 app.include_router(protected_router)
 app.include_router(document_router)
@@ -60,6 +58,7 @@ app.include_router(audit_router)
 app.include_router(chat_router)
 app.include_router(admin.router)
 app.include_router(document.router)
+app.include_router(conversation_router)
 
 
 @app.get("/")

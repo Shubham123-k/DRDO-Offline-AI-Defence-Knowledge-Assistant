@@ -1,10 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi import HTTPException
-
-from auth.dependencies import (
-    get_current_user,
-    require_clearance,
-)
+from auth.dependencies import ( get_current_user, require_clearance )
 
 from sqlalchemy.orm import Session
 from database.db import get_db

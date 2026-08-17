@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import useTheme from "../../hooks/useTheme";
-
 import { getUsers, updateUser, deleteUser } from "../../api/adminApi";
 
 export default function UserManagement() {
   const { theme } = useTheme();
-
   const [users, setUsers] = useState([]);
 
   const loadUsers = async () => {

@@ -3,21 +3,37 @@ import ChatActionsMenu from "./ChatActionsMenu";
 import { useChat } from "../../context/ChatContext";
 import useTheme from "../../hooks/useTheme";
 
-export default function SidebarItem({ chat, active }) {
+export default function SidebarItem({
+  chat,
+  active,
+}) {
   const { theme } = useTheme();
-
-  const {
-    setActiveChatId,
-    pinChat,
-    renameChat,
-    deleteChat,
-  } = useChat();
+  const { selectChat, pinChat, renameChat, deleteChat } = useChat();
 
   const handleRename = () => {
-    const title = prompt("Rename conversation", chat.title);
+    const title = prompt(
+      "Rename conversation",
+      chat.title,
+    );
 
-    if (title) {
-      renameChat(chat.id, title);
+    if (
+      title &&
+      title.trim() !== ""
+    ) {
+      renameChat(
+        chat.id,
+        title.trim(),
+      );
+    }
+  };
+
+  const handleDelete = () => {
+    const confirmed = window.confirm(
+      `Delete "${chat.title}"?\n\nThis action cannot be undone.`,
+    );
+
+    if (confirmed) {
+      deleteChat(chat.id);
     }
   };
 
@@ -34,7 +50,9 @@ export default function SidebarItem({ chat, active }) {
       }`}
     >
       <button
-        onClick={() => setActiveChatId(chat.id)}
+        onClick={() =>
+          selectChat(chat.id)
+        }
         className="flex flex-1 items-center gap-3 overflow-hidden"
       >
         <MessageSquare size={18} />
@@ -46,9 +64,11 @@ export default function SidebarItem({ chat, active }) {
 
       <div className="opacity-0 transition-opacity group-hover:opacity-100">
         <ChatActionsMenu
-          onPin={() => pinChat(chat.id)}
+          onPin={() =>
+            pinChat(chat.id)
+          }
           onRename={handleRename}
-          onDelete={() => deleteChat(chat.id)}
+          onDelete={handleDelete}
         />
       </div>
     </div>

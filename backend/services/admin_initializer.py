@@ -1,8 +1,6 @@
 from sqlalchemy.orm import Session
-
 from models.user import User
 from auth.hashing import hash_password
-
 
 def create_default_admin(db: Session):
 

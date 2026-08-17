@@ -1,21 +1,8 @@
-import {
-  ArrowLeft,
-  Sun,
-  Moon,
-  Monitor,
-  Trash2,
-  RotateCcw,
-  Shield,
-  KeyRound,
-  LogOut,
-  ChevronRight,
-} from "lucide-react";
-
+import { ArrowLeft, Sun, Moon, Monitor, Trash2, RotateCcw, Shield, KeyRound, LogOut, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import useTheme from "../hooks/useTheme";
 import ThemeToggle from "../components/common/ThemeToggle";
 import ParticleBackground from "../components/particles/ParticleBackground";
-
 import { deleteAccount } from "../api/profile";
 
 export default function Settings() {
@@ -31,32 +18,23 @@ export default function Settings() {
           : "bg-gradient-to-br from-[#050505] via-[#0B0B0B] to-[#151515] text-white"
       }`}
     >
-      {/* ============================= */}
-      {/* Particle Background */}
-      {/* ============================= */}
 
+      {/* Particle Background */}
       {theme === "dark" && (
         <>
           <div className="absolute inset-0 opacity-40">
             <ParticleBackground />
           </div>
-
           <div className="absolute left-0 top-0 h-96 w-96 rounded-full bg-blue-500/10 blur-[160px]" />
-
           <div className="absolute bottom-0 right-0 h-96 w-96 rounded-full bg-cyan-500/10 blur-[180px]" />
         </>
       )}
 
-      {/* ============================= */}
-
       <div className="relative z-10 mx-auto max-w-6xl px-8 py-12">
 
         {/* Header */}
-
         <div className="mb-14 flex items-center justify-between">
-
           <div className="flex items-center gap-5">
-
             <button
               onClick={() => navigate("/chat")}
               className={`rounded-2xl border p-3 transition-all duration-300 hover:scale-105 ${
@@ -69,11 +47,9 @@ export default function Settings() {
             </button>
 
             <div>
-
               <h1 className="text-5xl font-bold">
                 Settings
               </h1>
-
               <p
                 className={`mt-3 text-lg ${
                   theme === "light"
@@ -83,17 +59,12 @@ export default function Settings() {
               >
                 Personalize your DRDO AI Assistant experience.
               </p>
-
             </div>
-
           </div>
-
           <ThemeToggle />
-
         </div>
 
         {/* Appearance */}
-
         <Section
           title="Appearance"
           icon="🎨"
@@ -182,7 +153,6 @@ export default function Settings() {
         </Section>
 
         {/* Danger Zone */}
-
         <div
           className={`mt-10 rounded-3xl border p-8 backdrop-blur-xl transition-all duration-500 ${
             theme === "light"
@@ -204,74 +174,49 @@ export default function Settings() {
           >
             These actions are permanent and cannot be undone.
           </p>
-
           <div className="space-y-5">
 
             {/* Logout */}
-
             <button
               onClick={() => {
-
                 localStorage.clear();
-
                 navigate("/signin");
-
               }}
               className="flex w-full items-center justify-between rounded-2xl bg-red-600 px-6 py-5 text-white transition-all duration-300 hover:scale-[1.02] hover:bg-red-700"
             >
-
               <div className="flex items-center gap-4">
-
                 <LogOut size={22} />
-
                 <div className="text-left">
-
                   <h3 className="font-semibold">
                     Logout
                   </h3>
-
                   <p className="text-sm text-red-100">
                     Sign out from your account.
                   </p>
-
                 </div>
-
               </div>
-
               <ChevronRight />
-
             </button>
 
             {/* Delete */}
-
             <button
               onClick={async () => {
-
                 const confirmed = window.confirm(
                   "This action will permanently delete your account.\n\nContinue?"
                 );
-
                 if (!confirmed) return;
-
                 try {
-
                   await deleteAccount();
-
                   localStorage.clear();
-
                   alert("Account deleted successfully.");
-
                   navigate("/signin");
 
                 } catch (err) {
-
                   alert(
                     err.response?.data?.detail ||
                       "Unable to delete account."
                   );
-
                 }
-
               }}
               className={`flex w-full items-center justify-between rounded-2xl border px-6 py-5 transition-all duration-300 hover:scale-[1.02] ${
                 theme === "light"
@@ -279,35 +224,22 @@ export default function Settings() {
                   : "border-red-500/20 bg-red-500/10 text-red-400 hover:bg-red-500/20"
               }`}
             >
-
               <div className="flex items-center gap-4">
-
                 <Trash2 size={22} />
-
                 <div className="text-left">
-
                   <h3 className="font-semibold">
                     Delete Account
                   </h3>
-
                   <p className="text-sm opacity-80">
                     Permanently remove your account and all associated data.
                   </p>
-
                 </div>
-
               </div>
-
               <ChevronRight />
-
             </button>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
   );
 }
@@ -441,11 +373,9 @@ function ActionRow({
         </div>
 
         <div>
-
           <h3 className="text-xl font-semibold">
             {title}
           </h3>
-
           <p
             className={`mt-1 ${
               theme === "light"
@@ -455,9 +385,7 @@ function ActionRow({
           >
             {subtitle}
           </p>
-
         </div>
-
       </div>
 
       {badge ? (

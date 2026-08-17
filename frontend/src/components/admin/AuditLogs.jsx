@@ -62,11 +62,8 @@ export default function AuditLogs() {
                   className="border-t border-gray-200 dark:border-white/10"
                 >
                   <td className="p-4">{log.user_id}</td>
-
                   <td className="p-4">{log.action}</td>
-
                   <td className="p-4">{log.details}</td>
-
                   <td className="p-4">
                     {new Date(log.timestamp).toLocaleString()}
                   </td>

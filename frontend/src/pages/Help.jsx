@@ -1,11 +1,5 @@
 import { useMemo, useState } from "react";
-import {
-  BookOpen,
-  Shield,
-  Mail,
-  HelpCircle,
-  Info,
-} from "lucide-react";
+import { BookOpen, Shield, Mail, HelpCircle } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -73,18 +67,13 @@ export default function Help() {
         : "bg-gradient-to-br from-[#050505] via-[#0B0B0B] to-[#151515]"
     }`}
   >
-    {/* =========================== */}
     {/* Background Effects */}
-    {/* =========================== */}
-
     {theme === "dark" && (
       <>
         <div className="absolute inset-0 opacity-40">
           <ParticleBackground />
         </div>
-
         <div className="absolute left-0 top-0 h-[500px] w-[500px] rounded-full bg-blue-500/10 blur-[180px]" />
-
         <div className="absolute bottom-0 right-0 h-[500px] w-[500px] rounded-full bg-cyan-500/10 blur-[180px]" />
       </>
     )}
@@ -92,11 +81,8 @@ export default function Help() {
     <div className="relative z-10 mx-auto max-w-7xl px-8 py-12">
 
       {/* Header */}
-
       <div className="mb-14 flex items-center justify-between">
-
         <div className="flex items-center gap-5">
-
           <button
             onClick={() => navigate("/chat")}
             className={`rounded-2xl border p-3 transition-all duration-300 hover:scale-105 ${
@@ -107,13 +93,10 @@ export default function Help() {
           >
             ←
           </button>
-
           <div>
-
             <h1 className="text-5xl font-bold">
               Help Center
             </h1>
-
             <p
               className={`mt-3 text-lg ${
                 theme === "light"
@@ -123,17 +106,12 @@ export default function Help() {
             >
               Find answers, learn the platform, and resolve common issues.
             </p>
-
           </div>
-
         </div>
-
         <ThemeToggle />
-
       </div>
 
       {/* Search */}
-
       <div
         className={`mb-12 rounded-3xl border p-6 backdrop-blur-xl ${
           theme === "light"
@@ -148,9 +126,7 @@ export default function Help() {
       </div>
 
       {/* Quick Actions */}
-
       <div className="mb-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-
         <QuickAction
           icon={<BookOpen size={34} />}
           title="User Guide"
@@ -199,59 +175,38 @@ export default function Help() {
             alert(
               "Administrator email copied."
             );
-
           }}
         />
-
       </div>
 
       {/* FAQ */}
-
       <div id="faq">
-
         <HelpCard title="Frequently Asked Questions">
-
           <div className="space-y-5">
-
             {filteredFaqs.length === 0 ? (
-
               <div className="py-12 text-center text-gray-500">
-
                 No help topics found.
-
               </div>
-
             ) : (
-
               filteredFaqs.map((faq) => (
-
                 <FAQItem
                   key={faq.question}
                   question={faq.question}
                   answer={faq.answer}
                 />
-
               ))
-
             )}
-
           </div>
-
         </HelpCard>
-
       </div>
 
       {/* Security */}
-
       <div
         id="security"
         className="mt-12"
       >
-
         <HelpCard title="Security Best Practices">
-
           <ul className="space-y-5 text-lg">
-
             <li>
               ✅ Never share your account credentials.
             </li>
@@ -271,21 +226,14 @@ export default function Help() {
             <li>
               ✅ Keep Secret documents within authorized systems only.
             </li>
-
           </ul>
-
         </HelpCard>
-
       </div>
 
       {/* System */}
-
       <div className="mt-12">
-
         <HelpCard title="System Information">
-
           <div className="grid gap-6 md:grid-cols-2">
-
             <InfoRow
               title="Application"
               value="DRDO AI Assistant"
@@ -315,19 +263,13 @@ export default function Help() {
               title="Vector Database"
               value="ChromaDB"
             />
-
           </div>
-
         </HelpCard>
-
       </div>
 
       {/* Contact */}
-
       <div className="mt-12">
-
         <HelpCard title="Need More Help?">
-
           <p
             className={`mb-8 text-lg ${
               theme === "light"
@@ -341,25 +283,18 @@ export default function Help() {
 
           <button
             onClick={() => {
-
               navigator.clipboard.writeText(
                 "support@drdo.local"
               );
-
               alert("Administrator email copied.");
-
             }}
             className="rounded-2xl bg-blue-600 px-8 py-4 text-white transition hover:bg-blue-700"
           >
             Copy Administrator Email
           </button>
-
         </HelpCard>
-
       </div>
-
     </div>
-
   </div>
 );
 }

@@ -1,12 +1,7 @@
 import { useEffect, useState } from "react";
 import useTheme from "../../hooks/useTheme";
 import { getDashboardStats } from "../../api/adminApi";
-import {
-  Users,
-  UserCheck,
-  Shield,
-  FileText,
-} from "lucide-react";
+import { Users, UserCheck, Shield, FileText } from "lucide-react";
 
 
 
@@ -76,7 +71,6 @@ if (loading) {
         <h1 className="text-3xl font-bold">
           Dashboard
         </h1>
-
         <p
           className={`mt-2 ${
             theme === "light"

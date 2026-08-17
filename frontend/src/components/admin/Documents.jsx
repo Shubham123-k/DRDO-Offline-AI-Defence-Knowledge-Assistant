@@ -1,19 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import {
-  Upload,
-  Download,
-  Trash2,
-  FileText,
-} from "lucide-react";
-
+import { Upload, Download, Trash2, FileText } from "lucide-react";
 import useTheme from "../../hooks/useTheme";
-
-import {
-  uploadDocument,
-  getDocuments,                                                                                                         
-  downloadDocument,
-  deleteDocument,
-} from "../../api/documentApi";
+import { uploadDocument, getDocuments, downloadDocument, deleteDocument } from "../../api/documentApi";
 
 export default function Documents() {
   const { theme } = useTheme();
@@ -77,15 +65,11 @@ export default function Documents() {
 
   return (
     <div className="space-y-8">
-
       <div className="flex items-center justify-between">
-
         <h1 className="text-3xl font-bold">
           Documents
         </h1>
-
         <div className="flex gap-3">
-
           <select
             value={classification}
             onChange={(e) =>
@@ -112,7 +96,6 @@ export default function Documents() {
 
             Upload
           </button>
-
           <input
             hidden
             ref={fileInputRef}
@@ -121,7 +104,6 @@ export default function Documents() {
             onChange={handleUpload}
           />
         </div>
-
       </div>
 
       <div
@@ -142,59 +124,41 @@ export default function Documents() {
             }
           >
             <tr>
-
               <th className="p-4 text-left">
                 File
               </th>
-
               <th className="text-left">
                 Classification
               </th>
-
               <th className="text-left">
                 Uploaded By
               </th>
-
               <th className="text-left">
                 Date
               </th>
-
               <th className="text-center">
                 Actions
               </th>
-
             </tr>
           </thead>
-
           <tbody>
-
             {documents.map((doc) => (
-
               <tr
                 key={doc.id}
                 className="border-t border-gray-200 dark:border-white/10"
               >
-
                 <td className="flex items-center gap-3 p-4">
-
                   <FileText size={18} />
-
                   {doc.original_filename}
-
                 </td>
-
                 <td>{doc.classification}</td>
-
                 <td>{doc.uploaded_by}</td>
-
                 <td>
                   {new Date(
                     doc.upload_time
                   ).toLocaleDateString()}
                 </td>
-
                 <td>
-
                   <div className="flex justify-center gap-3">
 
                     <a
@@ -214,36 +178,24 @@ export default function Documents() {
                     >
                       <Trash2 size={18} />
                     </button>
-
                   </div>
-
                 </td>
-
               </tr>
-
             ))}
 
             {documents.length === 0 && (
-
               <tr>
-
                 <td
                   colSpan={5}
                   className="p-10 text-center text-gray-500"
                 >
                   No documents uploaded.
                 </td>
-
               </tr>
-
             )}
-
           </tbody>
-
         </table>
-
       </div>
-
     </div>
   );
 }                                                                 

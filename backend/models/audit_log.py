@@ -1,14 +1,6 @@
 from datetime import datetime
-
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    DateTime,
-)
-
+from sqlalchemy import ( Column, Integer, String, DateTime )
 from database.base import Base
-
 
 class AuditLog(Base):
     __tablename__ = "audit_logs"

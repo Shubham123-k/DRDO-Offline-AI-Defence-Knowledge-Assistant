@@ -1,11 +1,6 @@
 import { useEffect, useState } from "react";
 import useTheme from "../../hooks/useTheme";
-
-import {
-  getPendingUsers,
-  approveUser,
-  rejectUser,
-} from "../../api/adminApi";
+import { getPendingUsers, approveUser, rejectUser } from "../../api/adminApi";
 
 export default function PendingUsers() {
   const { theme } = useTheme();

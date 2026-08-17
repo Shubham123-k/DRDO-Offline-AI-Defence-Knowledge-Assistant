@@ -2,17 +2,13 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { getProfile, updateProfile } from "../api/profile";
-
 import useTheme from "../hooks/useTheme";
-
 import PageHeader from "../components/common/PageHeader";
 import ParticleBackground from "../components/particles/ParticleBackground";
 
 export default function Profile() {
   const navigate = useNavigate();
-
   const { theme } = useTheme();
-
   const [user, setUser] = useState(null);
 
   const [form, setForm] = useState({

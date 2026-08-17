@@ -5,27 +5,54 @@ client = chromadb.PersistentClient(
 )
 
 collection = client.get_or_create_collection(
-    name="drdo_documents"
+    name="documents"
 )
 
-def add_chunks(chunks, embeddings, metadata):
-    ids = [
-        f"{metadata['document_id']}_{i}"
-        for i in range(len(chunks))
-    ]
 
-    metadatas = [
-        metadata.copy()
-        for _ in chunks
-    ]
+def add_chunks(
+    chunks,
+    embeddings,
+    metadata,
+):
+    """
+    Store page-aware chunks in ChromaDB.
+
+    chunks:
+        [
+            {
+                "page": 1,
+                "text": "..."
+            }
+        ]
+    """
+
+    ids = []
+    metadatas = []
+    documents = []
+
+    for index, chunk in enumerate(chunks):
+        chunk_id = (
+            f"{metadata['document_id']}_{index}"
+        )
+
+        item = metadata.copy()
+        item["page"] = chunk["page"]
+        item["chunk_index"] = index
+
+        ids.append(chunk_id)
+        metadatas.append(item)
+        documents.append(
+            chunk["text"]
+        )
 
     collection.add(
         ids=ids,
-        documents=chunks,
+        documents=documents,
         embeddings=embeddings,
         metadatas=metadatas,
     )
-    
+
+
 def search_chunks(
     query_embedding,
     allowed_classifications,
@@ -39,6 +66,26 @@ def search_chunks(
                 "$in": allowed_classifications
             }
         },
+        include=[
+            "documents",
+            "metadatas",
+            "distances",
+        ],
     )
-
+    
     return results
+
+
+def delete_document_chunks(
+    document_id: int,
+):
+    """
+    Delete all ChromaDB chunks belonging
+    to a specific document.
+    """
+
+    collection.delete(
+        where={
+            "document_id": document_id,
+        }
+    )

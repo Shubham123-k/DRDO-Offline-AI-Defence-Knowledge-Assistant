@@ -1,13 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  User,
-  Settings,
-  LogOut,
-  HelpCircle,
-  Pencil,
-  ChevronUp,
-} from "lucide-react";
+import { User, Settings, LogOut, HelpCircle, Pencil, ChevronUp } from "lucide-react";
 import useTheme from "../../hooks/useTheme";
 
 export default function ProfileMenu() {

@@ -1,12 +1,4 @@
-import {
-  LayoutDashboard,
-  UserPlus,
-  Users,
-  FileText,
-  ClipboardList,
-  Settings,
-  LogOut,
-} from "lucide-react";
+import {LayoutDashboard, UserPlus, Users, FileText, ClipboardList, Settings, LogOut } from "lucide-react";
 import useTheme from "../../hooks/useTheme";
 
 const menuItems = [

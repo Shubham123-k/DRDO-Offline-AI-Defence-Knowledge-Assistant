@@ -46,10 +46,8 @@ export default function AdminLayout() {
       }`}
     >
       <AdminSidebar page={page} setPage={setPage} />
-
       <div className="flex flex-1 flex-col">
         <AdminHeader />
-
         <main className="flex-1 overflow-y-auto p-8">{renderPage()}</main>
       </div>
     </div>

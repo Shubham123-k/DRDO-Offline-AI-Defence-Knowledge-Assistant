@@ -1,122 +1,162 @@
 import { useRef, useState } from "react";
 import { Paperclip, SendHorizontal } from "lucide-react";
+
 import useTheme from "../../hooks/useTheme";
 import { useChat } from "../../context/ChatContext";
+
 import AttachmentPreview from "./AttachmentPreview";
 import VoiceRecorder from "./VoiceRecorder";
 import DropZone from "./DropZone";
 
-import { askAI } from "../../api/aiApi";
 import { uploadDocument } from "../../api/documentApi";
 
+
 export default function ChatInput() {
+
   const { theme } = useTheme();
 
   const {
-    addMessage,
     activeChat,
     createNewChat,
-    setIsTyping,
-    setStreamingText,
-    setIsStreaming,
+    askAssistant,
   } = useChat();
 
-  const [message, setMessage] = useState("");
-  const [files, setFiles] = useState([]);
 
-  const [dragActive, setDragActive] = useState(false);
+  const [message, setMessage] =
+    useState("");
 
-  const fileInputRef = useRef(null);
+  const [files, setFiles] =
+    useState([]);
 
+  const [dragActive, setDragActive] =
+    useState(false);
+
+  const [sending, setSending] =
+    useState(false);
+
+
+  const fileInputRef =
+    useRef(null);
+
+  // FILE SELECT
   const selectFiles = () => {
     fileInputRef.current?.click();
   };
 
   const onFilesSelected = (e) => {
-    const selected = Array.from(e.target.files);
-    setFiles((prev) => [...prev, ...selected]);
+    const selected =
+      Array.from(
+        e.target.files || []
+      );
+
+    setFiles((prev) => [
+      ...prev,
+      ...selected,
+    ]);
+
+    e.target.value = "";
   };
 
   const removeFile = (index) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setFiles((prev) =>
+      prev.filter(
+        (_, i) => i !== index
+      )
+    );
   };
 
+  // SEND
   const sendMessage = async () => {
-    if (!message.trim() && files.length === 0) return;
-
-    let chatId = activeChat?.id;
-
-    if (!chatId) {
-      chatId = await createNewChat();
-
-      if (!chatId) return;
+    const question =
+      message.trim();
+    if (
+      !question &&
+      files.length === 0
+    ) {
+      return;
     }
 
-    if (files.length > 0) {
-      try {
-        for (const file of files) {
-          const formData = new FormData();
+    if (sending) {
+      return;
+    }
+    setSending(true);
 
-          formData.append("file", file);
+    try {
 
-          // Default classification for now.
-          // Later we'll read the user's clearance or allow them to choose.
-          formData.append("classification", "public");
+      let chatId =
+        activeChat?.id;
 
-          await uploadDocument(formData);
+      // CREATE CHAT
+      if (!chatId) {
+        chatId =
+          await createNewChat();
+
+        if (!chatId) {
+          return;
         }
-      } catch (error) {
-        console.error(error);
+      }
 
-        await addMessage("assistant", "Document upload failed.", chatId);
+      // UPLOAD FILES
+      if (files.length > 0) {
+        for (const file of files) {
+          const formData =
+            new FormData();
+
+          formData.append(
+            "file",
+            file
+          );
+
+          formData.append(
+            "classification",
+            "Public"
+          );
+
+          await uploadDocument(
+            formData
+          );
+        }
+      }
+
+      // ONLY UPLOAD
+      if (!question) {
+
+        setMessage("");
+        setFiles([]);
 
         return;
       }
-    }
-    await addMessage("user", message.trim() || "[Uploaded Files]", chatId);
 
-    setIsTyping(true);
-
-    try {
-      const aiResponse = await askAI(message.trim());
-
-      const response = aiResponse.data.answer;
-
-      setIsTyping(false);
-      setIsStreaming(true);
-
-      let index = 0;
-
-      const interval = setInterval(async () => {
-        setStreamingText(response.slice(0, index));
-
-        index++;
-
-        if (index > response.length) {
-          clearInterval(interval);
-
-          await addMessage("assistant", response, chatId);
-
-          setStreamingText("");
-          setIsStreaming(false);
-        }
-      }, 15);
-    } catch (error) {
-      setIsTyping(false);
-
-      await addMessage(
-        "assistant",
-        "Sorry, I couldn't process your request.",
-        chatId,
+      // ASK AI
+      await askAssistant(
+        question,
+        chatId
       );
 
-      console.error(error);
-    }
+      // CLEAR INPUT
+      setMessage("");
+      setFiles([]);
 
-    setMessage("");
-    setFiles([]);
+    } catch (error) {
+      console.error(
+        "Failed to send message:",
+        error
+      );
+
+      const detail =
+        error?.response?.data?.detail ||
+        error?.message ||
+        "Sorry, I couldn't process your request.";
+
+      alert(detail);
+
+    } finally {
+      // ALWAYS STOP PROCESSING
+      setSending(false);
+    }
   };
 
+  // DRAG & DROP
   const onDragEnter = (e) => {
     e.preventDefault();
     setDragActive(true);
@@ -134,17 +174,33 @@ export default function ChatInput() {
   const onDrop = (e) => {
     e.preventDefault();
     setDragActive(false);
-    const dropped = Array.from(e.dataTransfer.files);
-    setFiles((prev) => [...prev, ...dropped]);
+
+    const dropped =
+      Array.from(
+        e.dataTransfer.files || []
+      );
+
+    if (dropped.length > 0) {
+      setFiles((prev) => [
+        ...prev,
+        ...dropped,
+      ]);
+    }
   };
 
+
+  // ENTER
   const handleKeyDown = (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (
+      e.key === "Enter" &&
+      !e.shiftKey
+    ) {
       e.preventDefault();
       sendMessage();
     }
   };
 
+  // UI
   return (
     <DropZone
       dragActive={dragActive}
@@ -160,8 +216,10 @@ export default function ChatInput() {
             : "border-white/10 bg-[#0B0B0B]"
         }`}
       >
-        <AttachmentPreview files={files} removeFile={removeFile} />
-
+        <AttachmentPreview
+          files={files}
+          removeFile={removeFile}
+        />
         <div
           className={`flex items-end gap-3 rounded-2xl border px-4 py-3 shadow-sm ${
             theme === "light"
@@ -169,13 +227,17 @@ export default function ChatInput() {
               : "border-white/10 bg-[#1B1B1B]"
           }`}
         >
+
+          {/* ATTACHMENT */}
           <button
+            type="button"
             onClick={selectFiles}
-            className="transition hover:opacity-70 hover:cursor-pointer"
+            disabled={sending}
+            className="transition hover:cursor-pointer hover:opacity-70 disabled:cursor-not-allowed disabled:opacity-40"
+            title="Attach files"
           >
             <Paperclip size={22} />
           </button>
-
           <input
             ref={fileInputRef}
             hidden
@@ -185,33 +247,73 @@ export default function ChatInput() {
             onChange={onFilesSelected}
           />
 
+          {/* TEXT */}
           <textarea
             rows={1}
             value={message}
+            disabled={sending}
             onChange={(e) => {
-              setMessage(e.target.value);
-
-              e.target.style.height = "0px";
-              e.target.style.height = `${e.target.scrollHeight}px`;
+              setMessage(
+                e.target.value
+              );
+              e.target.style.height =
+                "0px";
+              e.target.style.height =
+                `${Math.min(
+                  e.target.scrollHeight,
+                  160
+                )}px`;
             }}
             onKeyDown={handleKeyDown}
-            placeholder="Ask anything..."
-            className="max-h-40 flex-1 resize-none overflow-y-auto bg-transparent outline-none"
+            placeholder={
+              sending
+                ? "Generating response..."
+                : "Ask anything..."
+            }
+            className="max-h-40 flex-1 resize-none overflow-y-auto bg-transparent outline-none disabled:cursor-not-allowed disabled:opacity-60"
           />
 
+          {/* VOICE */}
           <VoiceRecorder />
 
+          {/* SEND */}
           <button
+            type="button"
             onClick={sendMessage}
-            disabled={!message.trim() && files.length === 0}
-            className={`rounded-full p-2 transition hover:cursor-pointer ${
-              message.trim() || files.length > 0
+            disabled={
+              sending ||
+              (
+                !message.trim() &&
+                files.length === 0
+              )
+            }
+            className={`rounded-full p-2 transition ${
+              message.trim() &&
+              !sending
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-300 text-gray-500"
+            } ${
+              sending
+                ? "cursor-not-allowed opacity-50"
+                : "hover:cursor-pointer"
             }`}
+            title="Send message"
           >
             <SendHorizontal size={18} />
           </button>
+        </div>
+
+        {/* STATUS */}
+        <div
+          className={`mt-2 text-center text-xs ${
+            theme === "light"
+              ? "text-gray-400"
+              : "text-gray-500"
+          }`}
+        >
+          {sending
+            ? "DRDO AI Assistant is processing your request..."
+            : "Offline Defence Knowledge Assistant"}
         </div>
       </div>
     </DropZone>

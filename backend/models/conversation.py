@@ -1,15 +1,6 @@
 from datetime import datetime
-
-from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Boolean,
-    DateTime,
-)
-
+from sqlalchemy import (Column, Integer, String, DateTime, Boolean, ForeignKey )
 from database.base import Base
-
 
 class Conversation(Base):
     __tablename__ = "conversations"
@@ -22,11 +13,13 @@ class Conversation(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.id"),
         nullable=False,
     )
 
     title = Column(
         String,
+        nullable=False,
         default="New Chat",
     )
 
@@ -38,4 +31,10 @@ class Conversation(Base):
     created_at = Column(
         DateTime,
         default=datetime.utcnow,
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
     )

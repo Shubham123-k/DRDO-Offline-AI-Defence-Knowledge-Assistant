@@ -1,15 +1,6 @@
 from datetime import datetime
-
-from sqlalchemy import (
-    Column,
-    Integer,
-    Text,
-    String,
-    DateTime,
-)
-
+from sqlalchemy import ( Column, Integer, Text, String, DateTime )
 from database.base import Base
-
 
 class Message(Base):
     __tablename__ = "messages"
