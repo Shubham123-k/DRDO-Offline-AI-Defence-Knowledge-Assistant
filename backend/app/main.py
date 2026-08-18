@@ -28,6 +28,26 @@ from routes.conversation import (
 
 Base.metadata.create_all(bind=engine)
 
+
+def get_allowed_origins():
+    configured_origins = os.getenv("CORS_ORIGINS", "")
+    origins = [origin.strip() for origin in configured_origins.split(",") if origin.strip()]
+
+    frontend_url = os.getenv("FRONTEND_URL")
+    if frontend_url:
+        origins.append(frontend_url.strip())
+
+    defaults = [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "https://drdoai-three.vercel.app",
+    ]
+
+    return list(dict.fromkeys(origins + defaults))
+
+
 app = FastAPI(
     title="DRDO AI Assistant API",
     version="1.0.0",
@@ -40,11 +60,12 @@ try:
 finally:
     db.close()
 
-frontend_url = os.getenv("FRONTEND_URL")
-    
+allowed_origins = get_allowed_origins()
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[frontend_url],
+    allow_origins=allowed_origins,
+    allow_origin_regex=r"https://.*\.vercel\.app$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
