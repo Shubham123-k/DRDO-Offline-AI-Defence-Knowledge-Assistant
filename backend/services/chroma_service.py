@@ -1,7 +1,16 @@
+import os
 import chromadb
 
+print("====================================")
+print("CHROMA DEBUG")
+print("Current working directory:", os.getcwd())
+print("Chroma version:", chromadb.__version__)
+print("Chroma path:", os.path.abspath("chroma_db_render"))
+print("Path exists:", os.path.exists("chroma_db_render"))
+print("====================================")
+
 client = chromadb.PersistentClient(
-    path="chroma_db"
+    path="chroma_db_render"
 )
 
 collection = client.get_or_create_collection(
