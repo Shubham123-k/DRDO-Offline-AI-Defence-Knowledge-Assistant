@@ -8,6 +8,7 @@ import Documents from "./Documents";
 import AuditLogs from "./AuditLogs";
 import Settings from "../../pages/Settings";
 import useTheme from "../../hooks/useTheme";
+import SecureUsers from "./SecureUsers";
 
 export default function AdminLayout() {
   const { theme } = useTheme();
@@ -24,6 +25,9 @@ export default function AdminLayout() {
 
       case "users":
         return <UserManagement />;
+
+      case "secure-users":
+        return <SecureUsers />;
 
       case "documents":
         return <Documents />;

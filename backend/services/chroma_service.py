@@ -1,16 +1,16 @@
-import os
+from pathlib import Path
 import chromadb
 
-print("====================================")
-print("CHROMA DEBUG")
-print("Current working directory:", os.getcwd())
-print("Chroma version:", chromadb.__version__)
-print("Chroma path:", os.path.abspath("chroma_db_render"))
-print("Path exists:", os.path.exists("chroma_db_render"))
-print("====================================")
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+CHROMA_PATH = BASE_DIR / "chroma_db"
+CHROMA_PATH.mkdir(
+    parents=True,
+    exist_ok=True,
+)
 
 client = chromadb.PersistentClient(
-    path="chroma_db_render"
+    path=str(CHROMA_PATH)
 )
 
 collection = client.get_or_create_collection(
@@ -23,42 +23,51 @@ def add_chunks(
     embeddings,
     metadata,
 ):
-    """
-    Store page-aware chunks in ChromaDB.
+    if not chunks:
+        return
 
-    chunks:
-        [
-            {
-                "page": 1,
-                "text": "..."
-            }
-        ]
-    """
+    if not embeddings:
+        return
 
-    ids = []
+    if len(chunks) != len(embeddings):
+        raise ValueError(
+            "Number of chunks and embeddings must be the same."
+        )
+
+    if "document_id" not in metadata:
+        raise ValueError(
+            "document_id is required in metadata."
+        )
+
+    document_id = metadata["document_id"]
+
+    ids = [
+        f"{document_id}_{index}"
+        for index in range(len(chunks))
+    ]
+
     metadatas = []
-    documents = []
 
-    for index, chunk in enumerate(chunks):
-        chunk_id = (
-            f"{metadata['document_id']}_{index}"
-        )
-
+    for index in range(len(chunks)):
         item = metadata.copy()
-        item["page"] = chunk["page"]
         item["chunk_index"] = index
-
-        ids.append(chunk_id)
         metadatas.append(item)
-        documents.append(
-            chunk["text"]
-        )
 
     collection.add(
         ids=ids,
-        documents=documents,
+        documents=chunks,
         embeddings=embeddings,
         metadatas=metadatas,
+    )
+
+
+def delete_document_chunks(
+    document_id: int,
+):
+    collection.delete(
+        where={
+            "document_id": document_id
+        }
     )
 
 
@@ -67,8 +76,24 @@ def search_chunks(
     allowed_classifications,
     n_results=10,
 ):
+    if not query_embedding:
+        return {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
+
+    if not allowed_classifications:
+        return {
+            "documents": [[]],
+            "metadatas": [[]],
+            "distances": [[]],
+        }
+
     results = collection.query(
-        query_embeddings=[query_embedding],
+        query_embeddings=[
+            query_embedding
+        ],
         n_results=n_results,
         where={
             "classification": {
@@ -81,20 +106,5 @@ def search_chunks(
             "distances",
         ],
     )
-    
+
     return results
-
-
-def delete_document_chunks(
-    document_id: int,
-):
-    """
-    Delete all ChromaDB chunks belonging
-    to a specific document.
-    """
-
-    collection.delete(
-        where={
-            "document_id": document_id,
-        }
-    )

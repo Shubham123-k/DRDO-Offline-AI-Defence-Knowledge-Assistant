@@ -5,7 +5,6 @@ from auth.dependencies import get_current_user
 from database.db import get_db
 
 from schemas.conversation import ( ConversationCreate, ConversationRename )
-
 from services.conversation_service import ( create_conversation, get_conversations, rename_conversation, delete_conversation, toggle_pin)
 
 router = APIRouter(

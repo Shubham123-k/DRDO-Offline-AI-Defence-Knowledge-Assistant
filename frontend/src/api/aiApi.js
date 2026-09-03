@@ -1,21 +1,29 @@
 import api from "./axios";
 
+
 export const askAI = (
+  question,
   conversationId,
-  question
 ) => {
-  return api.post("/ai/ask", {
-    conversation_id: conversationId,
-    question: question,
-  });
+  return api.post(
+    "/ai/ask",
+    {
+      conversation_id: Number(conversationId),
+      question: question,
+    }
+  );
 };
 
+
 export const retrieveDocuments = (
+  question,
   conversationId,
-  question
 ) => {
-  return api.post("/ai/retrieve", {
-    conversation_id: conversationId,
-    question: question,
-  });
+  return api.post(
+    "/ai/retrieve",
+    {
+      conversation_id: Number(conversationId),
+      question: question,
+    }
+  );
 };

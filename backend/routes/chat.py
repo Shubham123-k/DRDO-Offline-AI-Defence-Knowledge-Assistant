@@ -1,17 +1,16 @@
 from fastapi import ( APIRouter, Depends )
-
 from sqlalchemy.orm import Session
 
 from database.db import get_db
 from auth.dependencies import get_current_user
 
 from models.conversation import Conversation
-from schemas.conversation import ConversationCreate
-
 from models.message import Message
+
+from schemas.conversation import ConversationCreate
 from schemas.message import MessageCreate
-from fastapi import HTTPException
 from schemas.conversation import ConversationRename
+from fastapi import HTTPException
 
 router = APIRouter(
     prefix="/chat",
@@ -92,11 +91,47 @@ def add_message(
     )
 
     db.add(message)
+
+    if role == "user":
+
+        existing_user_message = (
+            db.query(Message)
+            .filter(
+                Message.conversation_id == conversation_id,
+                Message.role == "user",
+            )
+            .first()
+        )
+
+        if existing_user_message is None:
+
+            first_question = request.content.strip()
+
+            if first_question:
+                conversation.title = first_question
+
     conversation.updated_at = message.created_at
+
     db.commit()
     db.refresh(message)
+    db.refresh(conversation)
 
-    return message
+    return {
+        "id": message.id,
+        "conversation_id": message.conversation_id,
+        "role": message.role,
+        "content": message.content,
+        "created_at": message.created_at,
+
+        # Useful for updating the frontend immediately
+        "conversation": {
+            "id": conversation.id,
+            "title": conversation.title,
+            "pinned": conversation.pinned,
+            "created_at": conversation.created_at,
+            "updated_at": conversation.updated_at,
+        },
+    }
 
 @router.get("/{conversation_id}/messages")
 def get_messages(

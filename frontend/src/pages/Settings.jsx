@@ -7,7 +7,6 @@ import { deleteAccount } from "../api/profile";
 
 export default function Settings() {
   const navigate = useNavigate();
-
   const { theme, toggleTheme } = useTheme();
 
   return (

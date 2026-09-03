@@ -8,10 +8,13 @@ import Admin from "../pages/Admin";
 import Profile from "../pages/Profile";
 import NotFound from "../pages/NotFound";
 import PendingApproval from "../pages/PendingApproval";
+import ForgotPassword from "../pages/ForgotPassword";
 
 import ProtectedRoute from "./ProtectedRoute";
 import Settings from "../pages/Settings";
 import Help from "../pages/Help";
+import EditUser from "../pages/EditUser";
+
 
 export default function AppRoutes() {
   return (
@@ -23,8 +26,9 @@ export default function AppRoutes() {
       <Route path="/pending-approval" element={<PendingApproval />} />
       <Route path="/settings" element={<Settings />} />
       <Route path="/help" element={<Help />} />
+      <Route path="/forgotpassword" element={<ForgotPassword />} />
+      <Route path="/edit-user" element={<EditUser />} />
 
-      {/* Protected Routes */}
       <Route
         path="/chat"
         element={

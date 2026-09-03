@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
-import { getChats, createChat,getMessages,
+import { getChats, createChat, getMessages,
   addMessage as addMessageApi,
   renameChat as renameChatApi,
   pinChat as pinChatApi,
@@ -12,18 +12,19 @@ const ChatContext = createContext();
 
 export function ChatProvider({ children }) {
   const [chats, setChats] = useState([]);
-  const [loadingChats, setLoadingChats] = useState(true);
-  const [activeChatId, setActiveChatId] = useState(null);
+  const [loadingChats, setLoadingChats] =
+    useState(true);
 
+
+  const [activeChatId, setActiveChatId] = useState(null);
   const [isTyping, setIsTyping] = useState(false);
   const [streamingText, setStreamingText] = useState("");
-  const [isStreaming, setIsStreaming] = useState(false);
 
+  const [isStreaming, setIsStreaming] = useState(false);
   const [aiSources, setAiSources] = useState([]);
   const [aiModel, setAiModel] = useState(null);
   const [processingTime, setProcessingTime] = useState(null);
 
-  // LOAD CHATS
   useEffect(() => {
     loadChats();
   }, []);
@@ -31,42 +32,62 @@ export function ChatProvider({ children }) {
   const loadChats = async () => {
     try {
       setLoadingChats(true);
-      const response = await getChats();
+
+      const response =
+        await getChats();
+
       const backendChats =
         response.data.map((chat) => ({
           id: chat.id,
-          title: chat.title,
-          pinned: chat.pinned,
+          title:
+            chat.title || "New Chat",
+
+          pinned:
+            chat.pinned || false,
+
           classification:
-            chat.classification || "Public",
+            chat.classification ||
+            "Public",
+
           createdAt:
             chat.created_at,
+
           updatedAt:
             chat.updated_at,
+
           messages: [],
         }));
 
       setChats(backendChats);
+      setActiveChatId(null);
 
-      if (backendChats.length > 0) {
-        setActiveChatId(
-          backendChats[0].id
-        );
-      }
+      // Reset AI state for the fresh conversation
+      setAiSources([]);
+      setAiModel(null);
+      setProcessingTime(null);
+
+      setIsTyping(false);
+      setIsStreaming(false);
+      setStreamingText("");
 
     } catch (error) {
       console.error(
         "Failed to load chats:",
         error
       );
+      setActiveChatId(null);
+
     } finally {
       setLoadingChats(false);
     }
   };
 
-
-  // LOAD MESSAGEs
+  // LOAD MESSAGES
   const loadMessages = async (chatId) => {
+    if (!chatId) {
+      return;
+    }
+
     try {
       const response =
         await getMessages(chatId);
@@ -76,13 +97,19 @@ export function ChatProvider({ children }) {
           chat.id === chatId
             ? {
                 ...chat,
+
                 messages:
                   response.data.map(
                     (message) => ({
-                      id: message.id,
-                      role: message.role,
+                      id:
+                        message.id,
+
+                      role:
+                        message.role,
+
                       content:
                         message.content,
+
                       createdAt:
                         message.created_at,
                     })
@@ -100,11 +127,15 @@ export function ChatProvider({ children }) {
     }
   };
 
-  // SELECT CHAT
+  // SELECT EXISTING CHAT
   const selectChat = async (chatId) => {
+    if (!chatId) {
+      return;
+    }
 
     setActiveChatId(chatId);
 
+    // Clear AI information belonging to another chat
     setAiSources([]);
     setAiModel(null);
     setProcessingTime(null);
@@ -116,7 +147,6 @@ export function ChatProvider({ children }) {
     await loadMessages(chatId);
   };
 
-
   // CREATE NEW CHAT
   const createNewChat = async (
     classification = "Public"
@@ -126,17 +156,25 @@ export function ChatProvider({ children }) {
         await createChat("New Chat");
 
       const chat = {
-        id: response.data.id,
+        id:
+          response.data.id,
+
         title:
           response.data.title ||
           "New Chat",
+
         pinned:
-          response.data.pinned || false,
+          response.data.pinned ||
+          false,
+
         classification,
+
         createdAt:
           response.data.created_at,
+
         updatedAt:
           response.data.updated_at,
+
         messages: [],
       };
 
@@ -158,7 +196,6 @@ export function ChatProvider({ children }) {
       return chat.id;
 
     } catch (error) {
-
       console.error(
         "Failed to create chat:",
         error
@@ -168,7 +205,6 @@ export function ChatProvider({ children }) {
     }
   };
 
-
   // ACTIVE CHAT
   const activeChat =
     chats.find(
@@ -176,7 +212,6 @@ export function ChatProvider({ children }) {
         chat.id === activeChatId
     );
 
-  // NORMAL MESSAGE
   const addMessage = async (
     role,
     content,
@@ -189,6 +224,7 @@ export function ChatProvider({ children }) {
 
       return null;
     }
+
     try {
       const response =
         await addMessageApi(
@@ -204,6 +240,7 @@ export function ChatProvider({ children }) {
                 ...chat,
 
                 title:
+                  role === "user" &&
                   chat.messages.length === 0
                     ? content.slice(0, 35)
                     : chat.title,
@@ -233,7 +270,6 @@ export function ChatProvider({ children }) {
       return response.data;
 
     } catch (error) {
-
       console.error(
         "Failed to save message:",
         error
@@ -246,142 +282,43 @@ export function ChatProvider({ children }) {
   // ASK AI
   const askAssistant = async (
     question,
-    chatId = activeChatId
+    conversationId = activeChatId
   ) => {
-
-    if (!chatId) {
+    if (!conversationId) {
       throw new Error(
-        "No active conversation."
+        "No active conversation selected."
       );
     }
-
-    if (!question?.trim()) {
-      throw new Error(
-        "Question cannot be empty."
-      );
-    }
-
-    // START TYPING
-    setIsTyping(true);
-    setIsStreaming(false);
-    setStreamingText("");
-
-    setAiSources([]);
-    setAiModel(null);
-    setProcessingTime(null);
 
     try {
-
       console.log(
         "Sending question to AI:",
         question
       );
+
       console.log(
         "Conversation ID:",
-        chatId
+        conversationId
       );
 
-      // CALL BACKEND
+      setIsTyping(true);
+
       const response =
         await askAI(
-          chatId,
-          question.trim()
+          question,
+          conversationId
         );
 
-      console.log(
-        "AI response:",
-        response.data
-      );
-
-      const data =
-        response.data;
-
       const answer =
-        data?.answer ||
-        "I couldn't generate an answer.";
+        response.data.answer;
 
-      // SAVE AI METADATA
-      setAiSources(
-        data.sources || []
+      await addMessage(
+        "assistant",
+        answer,
+        conversationId
       );
 
-      setAiModel(
-        data.model ||
-        "gemma4:26b"
-      );
-
-      setProcessingTime(
-        data.processing_time ??
-        null
-      );
-
-      setIsTyping(false);
-
-      setChats((prev) =>
-        prev.map((chat) => {
-
-          if (chat.id !== chatId) {
-            return chat;
-          }
-
-          const existingMessages =
-            chat.messages || [];
-
-          const alreadyHasUserMessage =
-            existingMessages.some(
-              (message) =>
-                message.role === "user" &&
-                message.content ===
-                  question.trim()
-            );
-
-          const alreadyHasAssistantMessage =
-            existingMessages.some(
-              (message) =>
-                message.role === "assistant" &&
-                message.content === answer
-            );
-
-          let newMessages =
-            [...existingMessages];
-
-          if (!alreadyHasUserMessage) {
-            newMessages.push({
-              id:
-                `user-${Date.now()}`,
-              role: "user",
-              content:
-                question.trim(),
-            });
-          }
-
-          if (!alreadyHasAssistantMessage) {
-            newMessages.push({
-              id:
-                `assistant-${Date.now()}-${Math.random()}`,
-              role: "assistant",
-              content: answer,
-            });
-          }
-
-          return {
-            ...chat,
-            title:
-              existingMessages.length === 0
-                ? question.trim().slice(0, 35)
-                : chat.title,
-            messages:
-              newMessages,
-          };
-        })
-      );
-
-      // FINISH ALL LOADING STATES
-      setIsStreaming(false);
-      setStreamingText("");
-      setIsTyping(false);
-
-      return data;
+      return response.data;
 
     } catch (error) {
       console.error(
@@ -389,11 +326,10 @@ export function ChatProvider({ children }) {
         error
       );
 
-      setIsTyping(false);
-      setIsStreaming(false);
-      setStreamingText("");
-
       throw error;
+
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -401,7 +337,17 @@ export function ChatProvider({ children }) {
   const pinChat = async (chatId) => {
     try {
       await pinChatApi(chatId);
-      await loadChats();
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === chatId
+            ? {
+                ...chat,
+                pinned: !chat.pinned,
+              }
+            : chat
+        )
+      );
+
     } catch (error) {
       console.error(
         "Failed to pin chat:",
@@ -418,6 +364,7 @@ export function ChatProvider({ children }) {
     if (!newTitle?.trim()) {
       return;
     }
+
     try {
       await renameChatApi(
         chatId,
@@ -429,6 +376,7 @@ export function ChatProvider({ children }) {
           chat.id === chatId
             ? {
                 ...chat,
+
                 title:
                   newTitle.trim(),
               }
@@ -448,6 +396,7 @@ export function ChatProvider({ children }) {
   const deleteChat = async (chatId) => {
     try {
       await deleteChatApi(chatId);
+
       setChats((prev) =>
         prev.filter(
           (chat) =>
@@ -475,7 +424,6 @@ export function ChatProvider({ children }) {
     }
   };
 
-  // PROVIDER
   return (
     <ChatContext.Provider
       value={{

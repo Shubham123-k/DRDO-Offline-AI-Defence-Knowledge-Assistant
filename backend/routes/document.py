@@ -1,5 +1,5 @@
-import os
 import shutil
+from pathlib import Path
 
 from fastapi import ( APIRouter, UploadFile, File, Form, Depends, HTTPException )
 from fastapi.responses import FileResponse
@@ -12,8 +12,10 @@ from models.document import Document
 from models.user import User
 
 from services.audit_service import create_audit_log
-from services.document_ingestion_service import ingest_document
-from services.chroma_service import delete_document_chunks
+from services.text_extractor import extract_text
+from services.text_splitter import split_text
+from services.embedding_service import embed_documents
+from services.chroma_service import ( add_chunks, delete_document_chunks )
 
 
 router = APIRouter(
@@ -22,15 +24,120 @@ router = APIRouter(
 )
 
 
-UPLOAD_FOLDER = "uploads"
+CLEARANCE_LEVELS = {
+    "Public": 1,
+    "Confidential": 2,
+    "Secret": 3,
+}
 
-os.makedirs(
-    UPLOAD_FOLDER,
+def can_access_classification(
+    user_clearance: str,
+    document_classification: str,
+):
+    user_level = CLEARANCE_LEVELS.get(
+        user_clearance,
+        1,
+    )
+
+    document_level = CLEARANCE_LEVELS.get(
+        document_classification,
+        1,
+    )
+
+    return document_level <= user_level
+
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+UPLOAD_FOLDER = BASE_DIR / "uploads"
+
+PUBLIC_FOLDER = UPLOAD_FOLDER / "Public"
+CONFIDENTIAL_FOLDER = UPLOAD_FOLDER / "Confidential"
+SECRET_FOLDER = UPLOAD_FOLDER / "Secret"
+
+
+PUBLIC_FOLDER.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+CONFIDENTIAL_FOLDER.mkdir(
+    parents=True,
+    exist_ok=True,
+)
+
+SECRET_FOLDER.mkdir(
+    parents=True,
     exist_ok=True,
 )
 
 
-# UPLOAD DOCUMENT
+CLASSIFICATION_FOLDERS = {
+    "Public": PUBLIC_FOLDER,
+    "Confidential": CONFIDENTIAL_FOLDER,
+    "Secret": SECRET_FOLDER,
+}
+
+
+ALLOWED_EXTENSIONS = {
+    ".pdf",
+    ".docx",
+    ".txt",
+    ".xls",
+    ".xlsx",
+}
+
+
+def get_allowed_classifications(
+    clearance: str,
+):
+    user_level = CLEARANCE_LEVELS.get(
+        clearance,
+        1,
+    )
+
+    return [
+        classification
+        for classification, level
+        in CLEARANCE_LEVELS.items()
+        if level <= user_level
+    ]
+
+
+def has_upload_clearance(
+    user_clearance: str,
+    document_classification: str,
+):
+    user_level = CLEARANCE_LEVELS.get(
+        user_clearance,
+        1,
+    )
+
+    document_level = CLEARANCE_LEVELS.get(
+        document_classification,
+        1,
+    )
+
+    return user_level >= document_level
+
+
+def get_upload_folder(
+    classification: str,
+):
+    folder = CLASSIFICATION_FOLDERS.get(
+        classification
+    )
+
+    if folder is None:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Invalid classification. "
+                "Use Public, Confidential or Secret."
+            ),
+        )
+
+    return folder
+
 
 @router.post("/upload")
 def upload_document(
@@ -39,52 +146,89 @@ def upload_document(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    classification = classification.strip().title()
 
-    allowed_extensions = [
-        ".pdf",
-        ".docx",
-        ".txt",
-        ".xls",
-        ".xlsx",
-    ]
+    if classification not in CLASSIFICATION_FOLDERS:
+        raise HTTPException(
+        status_code=400,
+        detail=(
+            "Invalid classification. "
+            "Use Public, Confidential or Secret."
+        ),
+        )
 
-    extension = os.path.splitext(
+    if current_user.role.lower() != "admin":
+        if not can_access_classification(
+        current_user.clearance,
+        classification,
+        ):
+            raise HTTPException(
+            status_code=403,
+            detail=(
+                f"You do not have sufficient clearance "
+                f"to upload a {classification} document."
+            ),
+        )
+
+    if not has_upload_clearance(
+        current_user.clearance,
+        classification,
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You do not have sufficient "
+                f"clearance to upload a "
+                f"{classification} document."
+            ),
+        )
+
+    if not file.filename:
+        raise HTTPException(
+            status_code=400,
+            detail="No file selected.",
+        )
+
+    original_filename = Path(
         file.filename
-    )[1].lower()
+    ).name
 
-    if extension not in allowed_extensions:
+    extension = Path(
+        original_filename
+    ).suffix.lower()
+
+    if extension not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
             detail=(
                 "Unsupported file type. "
-                "Supported formats: PDF, DOCX, TXT, XLS, XLSX."
+                "Allowed files: PDF, DOCX, TXT, "
+                "XLS and XLSX."
             ),
         )
 
-    allowed_classifications = [
-        "Public",
-        "Confidential",
-        "Secret",
-    ]
-
-    if classification not in allowed_classifications:
-        raise HTTPException(
-            status_code=400,
-            detail=(
-                "Invalid classification. "
-                "Allowed values are Public, Confidential and Secret."
-            ),
-        )
-
-    original_filename = file.filename
-
-    saved_filename = (
-        f"{current_user.id}_{original_filename}"
+    upload_folder = get_upload_folder(
+        classification
     )
 
-    save_path = os.path.join(
-        UPLOAD_FOLDER,
-        saved_filename,
+    document = Document(
+        filename="",
+        original_filename=original_filename,
+        file_type=extension,
+        classification=classification,
+        uploaded_by=current_user.id,
+    )
+
+    db.add(document)
+    db.commit()
+    db.refresh(document)
+
+    saved_filename = (
+        f"{document.id}_{original_filename}"
+    )
+
+    save_path = (
+        upload_folder / saved_filename
     )
 
     try:
@@ -92,109 +236,122 @@ def upload_document(
             save_path,
             "wb",
         ) as buffer:
-
             shutil.copyfileobj(
                 file.file,
                 buffer,
             )
 
-    except Exception as exc:
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                f"Unable to save document: {str(exc)}"
-            ),
+        document.filename = str(
+            Path(classification)
+            / saved_filename
         )
 
-    document = Document(
-        filename=saved_filename,
-        original_filename=original_filename,
-        file_type=extension,
-        classification=classification,
-        uploaded_by=current_user.id,
-    )
-
-    try:
-        db.add(document)
         db.commit()
         db.refresh(document)
 
-    except Exception as exc:
-        db.rollback()
-        if os.path.exists(save_path):
-            os.remove(save_path)
+        text = extract_text(
+            str(save_path)
+        )
+
+        if not text or not text.strip():
+            raise ValueError(
+                "No readable text could be "
+                "extracted from the document."
+            )
+
+        chunks = split_text(
+            text
+        )
+
+        if not chunks:
+            raise ValueError(
+                "The document could not be "
+                "split into chunks."
+            )
+
+        embeddings = embed_documents(
+            chunks
+        )
+
+        if not embeddings:
+            raise ValueError(
+                "Failed to generate "
+                "document embeddings."
+            )
+
+        metadata = {
+            "document_id": document.id,
+            "filename": original_filename,
+            "classification": classification,
+            "uploaded_by": current_user.id,
+        }
+
+        add_chunks(
+            chunks=chunks,
+            embeddings=embeddings,
+            metadata=metadata,
+        )
+
+        create_audit_log(
+            db=db,
+            user=current_user,
+            action="UPLOAD_DOCUMENT",
+            details=(
+                f"Uploaded {original_filename} "
+                f"as {classification} document."
+            ),
+        )
+
+        return {
+            "message": (
+                "Document uploaded and "
+                "indexed successfully."
+            ),
+            "document_id": document.id,
+            "filename": original_filename,
+            "classification": classification,
+            "chunks": len(chunks),
+            "storage": str(
+                Path("uploads")
+                / classification
+                / saved_filename
+            ),
+        }
+
+    except Exception as error:
+        if save_path.exists():
+            save_path.unlink()
+
+        db.delete(document)
+        db.commit()
 
         raise HTTPException(
             status_code=500,
             detail=(
-                f"Unable to save document information: {str(exc)}"
+                "Document processing failed: "
+                f"{str(error)}"
             ),
         )
 
-    try:
 
-        ingestion_result = ingest_document(
-            file_path=save_path,
-            document_id=document.id,
-            filename=document.original_filename,
-            classification=document.classification,
-            uploaded_by=current_user.id,
-        )
-
-    except Exception as exc:
-
-        try:
-            db.delete(document)
-            db.commit()
-
-        except Exception:
-            db.rollback()
-
-        if os.path.exists(save_path):
-            os.remove(save_path)
-
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Document upload succeeded, but "
-                f"document processing failed: {str(exc)}"
-            ),
-        )
-
-    create_audit_log(
-        db=db,
-        user=current_user,
-        action="UPLOAD_DOCUMENT",
-        details=(
-            f"Uploaded {original_filename} "
-            f"({classification}) - "
-            f"{ingestion_result['pages']} pages, "
-            f"{ingestion_result['chunks']} chunks"
-        ),
-    )
-
-    return {
-        "message": (
-            "Document uploaded and indexed successfully."
-        ),
-        "document_id": document.id,
-        "filename": document.original_filename,
-        "classification": document.classification,
-        "pages": ingestion_result["pages"],
-        "chunks": ingestion_result["chunks"],
-    }
-
-
-# GET ALL DOCUMENTS
 @router.get("/")
 def get_documents(
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
+    allowed_classifications = (
+        get_allowed_classifications(
+            current_user.clearance
+        )
+    )
 
     documents = (
         db.query(Document)
+        .filter(
+            Document.classification.in_(
+                allowed_classifications
+            )
+        )
         .order_by(
             Document.upload_time.desc()
         )
@@ -204,7 +361,6 @@ def get_documents(
     result = []
 
     for document in documents:
-
         user = (
             db.query(User)
             .filter(
@@ -222,9 +378,6 @@ def get_documents(
                 "classification": (
                     document.classification
                 ),
-                "file_type": (
-                    document.file_type
-                ),
                 "upload_time": (
                     document.upload_time
                 ),
@@ -239,14 +392,14 @@ def get_documents(
     return result
 
 
-# DOWNLOAD DOCUMENT
-@router.get("/download/{document_id}")
+@router.get(
+    "/download/{document_id}"
+)
 def download_document(
     document_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-
     document = (
         db.query(Document)
         .filter(
@@ -256,45 +409,37 @@ def download_document(
     )
 
     if document is None:
-
         raise HTTPException(
             status_code=404,
             detail="Document not found.",
         )
 
-    clearance_levels = {
-        "Public": 1,
-        "Confidential": 2,
-        "Secret": 3,
-    }
-
-    user_level = clearance_levels.get(
-        current_user.clearance,
-        1,
+    allowed_classifications = (
+        get_allowed_classifications(
+            current_user.clearance
+        )
     )
 
-    document_level = clearance_levels.get(
-        document.classification,
-        1,
-    )
-
-    if document_level > user_level:
-
+    if (
+        document.classification
+        not in allowed_classifications
+    ):
         raise HTTPException(
             status_code=403,
             detail=(
-                "You are not authorized to download "
-                "this document."
+                "You do not have sufficient "
+                "clearance to access this "
+                "document."
             ),
         )
 
-    path = os.path.join(
-        UPLOAD_FOLDER,
-        document.filename,
+    path = (
+        BASE_DIR
+        / "uploads"
+        / document.filename
     )
 
-    if not os.path.exists(path):
-
+    if not path.exists():
         raise HTTPException(
             status_code=404,
             detail="File missing.",
@@ -311,18 +456,17 @@ def download_document(
     )
 
     return FileResponse(
-        path,
+        str(path),
         filename=document.original_filename,
     )
 
-# DELETE DOCUMENT
+
 @router.delete("/{document_id}")
 def delete_document(
     document_id: int,
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user),
 ):
-
     document = (
         db.query(Document)
         .filter(
@@ -332,77 +476,77 @@ def delete_document(
     )
 
     if document is None:
-
         raise HTTPException(
             status_code=404,
             detail="Document not found.",
         )
 
-    path = os.path.join(
-        UPLOAD_FOLDER,
-        document.filename,
+    allowed_classifications = (
+        get_allowed_classifications(
+            current_user.clearance
+        )
     )
+
+    if (
+        current_user.role.lower() != "admin"
+        and document.classification
+        not in allowed_classifications
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "You do not have sufficient "
+                "clearance to delete this document."
+            ),
+        )
 
     original_filename = (
         document.original_filename
     )
 
-    try:
+    document_id_value = document.id
 
+    path = (
+        BASE_DIR
+        / "uploads"
+        / document.filename
+    )
+
+    try:
         delete_document_chunks(
-            document.id
+            document_id_value
         )
 
-    except Exception as exc:
+        if path.exists():
+            path.unlink()
 
-        raise HTTPException(
-            status_code=500,
-            detail=(
-                "Unable to remove document "
-                f"from the vector database: {str(exc)}"
-            ),
-        )
-
-    if os.path.exists(path):
-
-        try:
-            os.remove(path)
-
-        except Exception as exc:
-
-            raise HTTPException(
-                status_code=500,
-                detail=(
-                    "Unable to delete document file: "
-                    f"{str(exc)}"
-                ),
-            )
-
-    try:
         db.delete(document)
         db.commit()
 
-    except Exception as exc:
+        create_audit_log(
+            db=db,
+            user=current_user,
+            action="DELETE_DOCUMENT",
+            details=(
+                f"Deleted "
+                f"{original_filename}"
+            ),
+        )
+
+        return {
+            "message": (
+                "Document and its AI index "
+                "data deleted successfully."
+            )
+        }
+
+    except Exception as error:
         db.rollback()
 
         raise HTTPException(
             status_code=500,
             detail=(
-                f"Unable to delete document: {str(exc)}"
+                "Document deletion failed: "
+                f"{str(error)}"
             ),
         )
-
-    create_audit_log(
-        db=db,
-        user=current_user,
-        action="DELETE_DOCUMENT",
-        details=(
-            f"Deleted {original_filename}"
-        ),
-    )
-
-    return {
-        "message": (
-            "Document deleted successfully."
-        )
-    }

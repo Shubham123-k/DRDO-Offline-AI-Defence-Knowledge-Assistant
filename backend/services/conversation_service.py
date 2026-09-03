@@ -76,7 +76,6 @@ def delete_conversation(
         return False
 
     db.delete(conversation)
-
     db.commit()
 
     return True

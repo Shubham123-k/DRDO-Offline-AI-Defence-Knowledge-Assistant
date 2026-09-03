@@ -1,158 +1,85 @@
 import os
-
-import fitz  # PyMuPDF
+import fitz
 from docx import Document
 import pandas as pd
 
 
-def extract_pdf_pages(path: str):
-    """
-    Extract PDF text while preserving page numbers.
-
-    Returns:
-        [
-            {
-                "page": 1,
-                "text": "..."
-            },
-            {
-                "page": 2,
-                "text": "..."
-            }
-        ]
-    """
-
-    pages = []
+def extract_pdf(path: str) -> str:
+    text = ""
 
     pdf = fitz.open(path)
 
     try:
-        for page_number, page in enumerate(pdf, start=1):
-            text = page.get_text("text").strip()
-
-            if text:
-                pages.append(
-                    {
-                        "page": page_number,
-                        "text": text,
-                    }
-                )
+        for page in pdf:
+            text += page.get_text()
+            text += "\n"
     finally:
         pdf.close()
 
-    return pages
+    return text
 
 
-def extract_docx_pages(path: str):
-    """
-    DOCX files do not have reliable PDF-style page boundaries
-    without rendering the document.
-
-    Therefore the document is treated as page 1.
-    """
-
-    doc = Document(path)
+def extract_docx(path: str) -> str:
+    document = Document(path)
 
     text_parts = []
 
-    for paragraph in doc.paragraphs:
+    for paragraph in document.paragraphs:
         if paragraph.text.strip():
-            text_parts.append(paragraph.text.strip())
+            text_parts.append(paragraph.text)
 
-    text = "\n".join(text_parts).strip()
-
-    if not text:
-        return []
-
-    return [
-        {
-            "page": 1,
-            "text": text,
-        }
-    ]
+    return "\n".join(text_parts)
 
 
-def extract_txt_pages(path: str):
-    """
-    TXT files are treated as page 1.
-    """
-
+def extract_txt(path: str) -> str:
     with open(
         path,
         "r",
         encoding="utf-8",
         errors="ignore",
     ) as file:
-        text = file.read().strip()
-
-    if not text:
-        return []
-
-    return [
-        {
-            "page": 1,
-            "text": text,
-        }
-    ]
+        return file.read()
 
 
-def extract_excel_pages(path: str):
-    """
-    Excel sheets are represented as separate logical pages.
-
-    Sheet 1 -> page 1
-    Sheet 2 -> page 2
-    etc.
-    """
-
+def extract_excel(path: str) -> str:
     excel = pd.read_excel(
         path,
         sheet_name=None,
     )
 
-    pages = []
+    text_parts = []
 
-    for page_number, (sheet_name, dataframe) in enumerate(
-        excel.items(),
-        start=1,
-    ):
-        text = dataframe.to_string(
-            index=False
-        ).strip()
+    for sheet_name, dataframe in excel.items():
 
-        if text:
-            pages.append(
-                {
-                    "page": page_number,
-                    "text": (
-                        f"Sheet: {sheet_name}\n\n"
-                        f"{text}"
-                    ),
-                }
-            )
+        text_parts.append(
+            f"Sheet: {sheet_name}"
+        )
 
-    return pages
+        text_parts.append(
+            dataframe.to_string(index=False)
+        )
+
+    return "\n\n".join(text_parts)
 
 
-def extract_pages(path: str):
-    """
-    Main page-aware extraction function.
-    """
+def extract_text(path: str) -> str:
 
     extension = os.path.splitext(
         path
     )[1].lower()
 
     if extension == ".pdf":
-        return extract_pdf_pages(path)
+        return extract_pdf(path)
 
     if extension == ".docx":
-        return extract_docx_pages(path)
+        return extract_docx(path)
 
     if extension == ".txt":
-        return extract_txt_pages(path)
+        return extract_txt(path)
 
     if extension in [".xls", ".xlsx"]:
-        return extract_excel_pages(path)
+        return extract_excel(path)
 
-    return []
+    raise ValueError(
+        f"Unsupported file type: {extension}"
+    )

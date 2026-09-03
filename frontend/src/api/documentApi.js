@@ -14,4 +14,4 @@ export const downloadDocument = (id) =>
   `${api.defaults.baseURL}/documents/download/${id}`;
 
 export const deleteDocument = (id) =>
-  api.delete(`/documents/${id}`);                                                                                                           
+  api.delete(`/documents/${id}`);
