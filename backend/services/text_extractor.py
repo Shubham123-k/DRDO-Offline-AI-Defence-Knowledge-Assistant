@@ -83,3 +83,23 @@ def extract_text(path: str) -> str:
     raise ValueError(
         f"Unsupported file type: {extension}"
     )
+
+def extract_pages(path: str):
+    """Extract PDF text while preserving page numbers."""
+    extension = os.path.splitext(path)[1].lower()
+    if extension != ".pdf":
+        text = extract_text(path)
+        return [{"page": 1, "text": text}] if text.strip() else []
+
+    pages = []
+    pdf = fitz.open(path)
+    try:
+        for index, page in enumerate(pdf):
+            pages.append({
+                "page": index + 1,
+                "text": page.get_text("text") or "",
+            })
+    finally:
+        pdf.close()
+    return pages
+

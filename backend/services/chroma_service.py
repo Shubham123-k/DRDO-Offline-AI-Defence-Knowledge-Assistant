@@ -4,6 +4,7 @@ import chromadb
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CHROMA_PATH = BASE_DIR / "chroma_db"
+
 CHROMA_PATH.mkdir(
     parents=True,
     exist_ok=True,
@@ -46,16 +47,29 @@ def add_chunks(
         for index in range(len(chunks))
     ]
 
+    documents = [
+        chunk["text"]
+        if isinstance(chunk, dict)
+        else str(chunk)
+        for chunk in chunks
+    ]
+
     metadatas = []
 
-    for index in range(len(chunks)):
+    for index, chunk in enumerate(chunks):
+
         item = metadata.copy()
         item["chunk_index"] = index
+
+        # Preserve page information for page-aware RAG.
+        if isinstance(chunk, dict) and "page" in chunk:
+            item["page"] = int(chunk["page"])
+
         metadatas.append(item)
 
     collection.add(
         ids=ids,
-        documents=chunks,
+        documents=documents,
         embeddings=embeddings,
         metadatas=metadatas,
     )

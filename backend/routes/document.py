@@ -12,10 +12,8 @@ from models.document import Document
 from models.user import User
 
 from services.audit_service import create_audit_log
-from services.text_extractor import extract_text
-from services.text_splitter import split_text
-from services.embedding_service import embed_documents
-from services.chroma_service import ( add_chunks, delete_document_chunks )
+from services.document_ingestion_service import ingest_document
+from services.chroma_service import delete_document_chunks
 
 
 router = APIRouter(
@@ -249,47 +247,12 @@ def upload_document(
         db.commit()
         db.refresh(document)
 
-        text = extract_text(
-            str(save_path)
-        )
-
-        if not text or not text.strip():
-            raise ValueError(
-                "No readable text could be "
-                "extracted from the document."
-            )
-
-        chunks = split_text(
-            text
-        )
-
-        if not chunks:
-            raise ValueError(
-                "The document could not be "
-                "split into chunks."
-            )
-
-        embeddings = embed_documents(
-            chunks
-        )
-
-        if not embeddings:
-            raise ValueError(
-                "Failed to generate "
-                "document embeddings."
-            )
-
-        metadata = {
-            "document_id": document.id,
-            "filename": original_filename,
-            "classification": classification,
-            "uploaded_by": current_user.id,
-        }
-
-        add_chunks(
-            chunks=chunks,
-            embeddings=embeddings,
-            metadata=metadata,
+        ingestion = ingest_document(
+            file_path=str(save_path),
+            document_id=document.id,
+            filename=original_filename,
+            classification=classification,
+            uploaded_by=current_user.id,
         )
 
         create_audit_log(
@@ -310,7 +273,10 @@ def upload_document(
             "document_id": document.id,
             "filename": original_filename,
             "classification": classification,
-            "chunks": len(chunks),
+            "chunks": ingestion["chunks"],
+            "pages": ingestion.get("pages", 0),
+            "visual_items": ingestion.get("visual_items", 0),
+            "multimodal": ingestion.get("multimodal", False),
             "storage": str(
                 Path("uploads")
                 / classification
