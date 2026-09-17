@@ -24,16 +24,21 @@ export const deleteUser = (id) =>
 export const createSecureUser = (data) =>
   api.post("/admin/secure-users", data);
 
+export const verifySecureDetails = (adminPassword) =>
+  api.post("/admin/secure-details/verify", {
+    admin_password: adminPassword,
+  });
+
+export const resetSecureUserPassword = (id, data) =>
+  api.post(`/admin/secure-details/${id}/reset-password`, data);
+
 export const getAdminDocuments = () =>
   api.get("/admin/documents");
 
 export const downloadAdminDocument = (id) =>
-  api.get(
-    `/admin/documents/download/${id}`,
-    {
-      responseType: "blob",
-    }
-  );
+  api.get(`/admin/documents/download/${id}`, {
+    responseType: "blob",
+  });
 
 export const deleteAdminDocument = (id) =>
   api.delete(`/admin/documents/${id}`);

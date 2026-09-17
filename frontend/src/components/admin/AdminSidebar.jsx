@@ -1,4 +1,4 @@
-import { LayoutDashboard, UserPlus, Users, ShieldPlus, FileText, ClipboardList, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, UserPlus, Users, ShieldPlus, ShieldAlert, FileText, ClipboardList, Settings, LogOut } from "lucide-react";
 
 import { useNavigate } from "react-router-dom";
 import useTheme from "../../hooks/useTheme";
@@ -38,6 +38,11 @@ const menuItems = [
     id: "secure-users",
     label: "Secure Users",
     icon: ShieldPlus,
+  },
+  {
+    id: "secure-details",
+    label: "Secure Details",
+    icon: ShieldAlert,
   },
 ];
 

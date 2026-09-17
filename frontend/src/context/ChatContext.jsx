@@ -110,6 +110,11 @@ export function ChatProvider({ children }) {
                       content:
                         message.content,
 
+                      attachments:
+                        Array.isArray(message.attachments)
+                          ? message.attachments
+                          : [],
+
                       createdAt:
                         message.created_at,
                     })
@@ -215,7 +220,8 @@ export function ChatProvider({ children }) {
   const addMessage = async (
     role,
     content,
-    chatId = activeChatId
+    chatId = activeChatId,
+    attachments = [],
   ) => {
     if (!chatId) {
       console.error(
@@ -230,7 +236,8 @@ export function ChatProvider({ children }) {
         await addMessageApi(
           chatId,
           role,
-          content
+          content,
+          attachments,
         );
 
       setChats((prev) =>
@@ -242,7 +249,7 @@ export function ChatProvider({ children }) {
                 title:
                   role === "user" &&
                   chat.messages.length === 0
-                    ? content.slice(0, 35)
+                    ? (content || attachments?.[0]?.filename || "New Chat").slice(0, 35)
                     : chat.title,
 
                 messages: [
@@ -257,6 +264,11 @@ export function ChatProvider({ children }) {
 
                     content:
                       response.data.content,
+
+                    attachments:
+                      Array.isArray(response.data.attachments)
+                        ? response.data.attachments
+                        : [],
 
                     createdAt:
                       response.data.created_at,
@@ -275,14 +287,15 @@ export function ChatProvider({ children }) {
         error
       );
 
-      return null;
+      throw error;
     }
   };
 
   // ASK AI
   const askAssistant = async (
     question,
-    conversationId = activeChatId
+    conversationId = activeChatId,
+    attachmentDocumentIds = [],
   ) => {
     if (!conversationId) {
       throw new Error(
@@ -306,7 +319,8 @@ export function ChatProvider({ children }) {
       const response =
         await askAI(
           question,
-          conversationId
+          conversationId,
+          attachmentDocumentIds,
         );
 
       const answer =

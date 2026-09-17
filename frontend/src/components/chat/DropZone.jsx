@@ -128,7 +128,7 @@ export default function DropZone({
                 }`}
               >
                 <Image size={13} />
-                Images
+                JPG / PNG / WEBP / AVIF
               </span>
 
               <span

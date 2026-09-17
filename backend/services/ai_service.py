@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+
 from models.conversation import Conversation
 from models.message import Message
 from services.rag_service import ask_question
@@ -9,30 +10,21 @@ def process_question(
     conversation_id: int,
     question: str,
     clearance: str,
+    attachment_document_ids=None,
 ):
     conversation = (
         db.query(Conversation)
-        .filter(
-            Conversation.id == conversation_id,
-        )
+        .filter(Conversation.id == conversation_id)
         .first()
     )
 
     if conversation is None:
-
-        raise ValueError(
-            "Conversation not found."
-        )
+        raise ValueError("Conversation not found.")
 
     messages = (
         db.query(Message)
-        .filter(
-            Message.conversation_id
-            == conversation_id
-        )
-        .order_by(
-            Message.created_at.desc()
-        )
+        .filter(Message.conversation_id == conversation_id)
+        .order_by(Message.created_at.desc())
         .limit(6)
         .all()
     )
@@ -42,33 +34,18 @@ def process_question(
 
     for message in messages:
         role = message.role
+        role_name = "User" if role == "user" else "Assistant" if role == "assistant" else role.capitalize()
+        history_parts.append(f"{role_name}: {message.content}")
 
-        if role == "user":
-            role_name = "User"
+    conversation_history = "\n".join(history_parts)
 
-        elif role == "assistant":
-            role_name = "Assistant"
-
-        else:
-            role_name = role.capitalize()
-
-        history_parts.append(
-            f"{role_name}: {message.content}"
-        )
-
-    conversation_history = (
-        "\n".join(history_parts)
-    )
-
-    print(
-        f"AI: Loaded "
-        f"{len(messages)} previous messages."
-    )
+    print(f"AI: Loaded {len(messages)} previous messages.")
 
     result = ask_question(
         question=question,
         clearance=clearance,
         conversation_history=conversation_history,
+        document_ids=attachment_document_ids,
     )
 
     return {

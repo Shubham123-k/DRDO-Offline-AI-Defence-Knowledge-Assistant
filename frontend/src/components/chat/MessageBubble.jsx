@@ -1,6 +1,7 @@
 import { Bot, UserRound, ShieldCheck } from "lucide-react";
 import useTheme from "../../hooks/useTheme";
 import MarkdownRenderer from "./MarkdownRenderer";
+import MessageAttachment from "./MessageAttachment";
 
 /* REMOVE RAG / PDF SOURCE INFORMATION */
 function cleanAssistantContent(content) {
@@ -132,19 +133,24 @@ export default function MessageBubble({ message }) {
               />
             )}
 
-            {/* Message content */}
+            {/* Persisted attachments */}
+            {Array.isArray(message.attachments) && message.attachments.length > 0 && (
+              <div className={message.content ? "mb-2" : ""}>
+                {message.attachments.map((attachment) => (
+                  <MessageAttachment
+                    key={`${attachment.document_id}-${attachment.filename}`}
+                    attachment={attachment}
+                  />
+                ))}
+              </div>
+            )}
 
-            <div
-              className={
-                !isUser
-                  ? "pl-1"
-                  : ""
-              }
-            >
-              <MarkdownRenderer
-                content={displayContent}
-              />
-            </div>
+            {/* Message content */}
+            {displayContent && (
+              <div className={!isUser ? "pl-1" : ""}>
+                <MarkdownRenderer content={displayContent} />
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -62,38 +62,72 @@ export default function ChatInput() {
       let chatId = activeChat?.id;
 
       if (!chatId) {
-        chatId = await createNewChat();
+        chatId = await createNewChat(classification);
 
         if (!chatId) {
           return;
         }
       }
 
-      if (files.length > 0) {
-        for (const file of files) {
-          const formData = new FormData();
-          formData.append("file", file);
-          formData.append("classification", classification);
+      const uploadedAttachments = [];
 
-          await uploadDocument(formData);
+      // Upload first. The returned document_id is the authoritative ID that
+      // links the visible chat attachment to attachment-scoped RAG.
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("classification", classification);
+
+        const response = await uploadDocument(formData);
+        const data = response.data || {};
+
+        if (!data.document_id) {
+          throw new Error(`Upload failed for ${file.name}: no document ID returned.`);
         }
+
+        uploadedAttachments.push({
+          document_id: Number(data.document_id),
+          filename: data.filename || file.name,
+          file_type: data.file_type || file.name.split(".").pop(),
+          classification: data.classification || classification,
+          size: file.size || 0,
+        });
       }
 
+      // File only: persist the attachment in chat, index it in RAG, and do
+      // NOT call the AI endpoint.
       if (!question) {
+        await addMessage(
+          "user",
+          "",
+          chatId,
+          uploadedAttachments,
+        );
+
         setMessage("");
         setFiles([]);
-
         return;
       }
 
-      await addMessage("user", question, chatId);
+      // File + question: persist both in the same user message before asking
+      // the AI. This gives the backend an exact attachment/message link.
+      await addMessage(
+        "user",
+        question,
+        chatId,
+        uploadedAttachments,
+      );
 
       setMessage("");
       setFiles([]);
 
       setIsTyping(true);
 
-      await askAssistant(question, chatId);
+      await askAssistant(
+        question,
+        chatId,
+        uploadedAttachments.map((attachment) => attachment.document_id),
+      );
     } catch (error) {
       console.error("Failed to send message:", error);
 
@@ -103,7 +137,6 @@ export default function ChatInput() {
         "Sorry, I couldn't process your request.";
 
       setIsTyping(false);
-
       alert(detail);
     } finally {
       setSending(false);
@@ -303,7 +336,7 @@ export default function ChatInput() {
                 hidden
                 multiple
                 type="file"
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg"
+                accept=".pdf,.docx,.xls,.xlsx,.txt,.png,.jpg,.jpeg,.webp,.avif,.bmp,.gif,.tif,.tiff"
                 onChange={onFilesSelected}
               />
 

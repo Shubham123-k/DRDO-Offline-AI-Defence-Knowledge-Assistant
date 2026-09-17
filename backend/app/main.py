@@ -5,6 +5,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import inspect, text
 
 from database.db import engine, SessionLocal
 from database.base import Base
@@ -24,6 +25,21 @@ from services.admin_initializer import create_default_admin
 
 
 Base.metadata.create_all(bind=engine)
+
+
+def _ensure_message_attachments_column():
+    """Upgrade existing SQLite databases without requiring manual SQL."""
+    inspector = inspect(engine)
+    columns = {column["name"] for column in inspector.get_columns("messages")}
+
+    if "attachments" not in columns:
+        with engine.begin() as connection:
+            connection.execute(
+                text("ALTER TABLE messages ADD COLUMN attachments TEXT")
+            )
+
+
+_ensure_message_attachments_column()
 
 app = FastAPI(
     title="DRDO AI Assistant API",

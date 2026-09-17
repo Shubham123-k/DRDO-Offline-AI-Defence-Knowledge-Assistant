@@ -4,54 +4,67 @@ from pathlib import Path
 from ollama import Client
 
 
-VISION_MODEL = os.getenv("OLLAMA_VISION_MODEL") or os.getenv("OLLAMA_MODEL", "gemma4:e4b")
+MOONDREAM_MODEL = os.getenv("MOONDREAM_MODEL", "moondream")
 OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
-VISION_TIMEOUT = float(os.getenv("OLLAMA_VISION_TIMEOUT", "120"))
-VISION_ENABLED = os.getenv("OLLAMA_VISION_ENABLED", "true").strip().lower() in {
+MOONDREAM_TIMEOUT = float(os.getenv("MOONDREAM_TIMEOUT", "120"))
+MOONDREAM_ENABLED = os.getenv("MOONDREAM_ENABLED", "true").strip().lower() in {
     "1", "true", "yes", "on"
 }
 
 client = Client(
     host=OLLAMA_BASE_URL,
-    timeout=VISION_TIMEOUT,
+    timeout=MOONDREAM_TIMEOUT,
 )
 
 
-def analyze_image(image_path: str | Path, page_number: int, ocr_text: str = "") -> str:
-    """Analyze one PDF page with the local Ollama multimodal model.
+def analyze_image(
+    image_path: str | Path,
+    page_number: int | str,
+    ocr_text: str = "",
+) -> str:
+    """Analyze an image with the local Moondream vision-language model.
 
-    A hard client timeout prevents one slow Vision request from keeping the
-    entire document upload open indefinitely. OCR text remains available even
-    when Vision times out.
+    Moondream is used for visual understanding even when the image contains
+    no readable text. OCR is supplied only as an additional hint; it is not
+    required for visual analysis.
     """
-    if not VISION_ENABLED:
-        print(f"VISION: disabled; skipping page {page_number}")
+    if not MOONDREAM_ENABLED:
+        print(f"MOONDREAM: disabled; skipping {page_number}")
         return ""
 
     image_path = Path(image_path).resolve()
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+
     ocr_hint = ocr_text[:4000] if ocr_text else "No reliable OCR text was extracted."
 
     prompt = f"""
-You are analyzing page {page_number} of a technical/defence document.
+You are analyzing visual content from a defence/technical knowledge base.
+This is image/page {page_number}.
 
-Describe only information visibly supported by the image. Focus on:
-- diagrams, figures, equipment, components, labels and relationships;
-- tables, charts, symbols, arrows and flow directions;
-- visible text OCR may have missed;
-- technical structure and spatial relationships.
+Analyze the image itself. Do NOT require text to be present.
+Describe only information that is visibly supported by the image. Focus on:
+- objects, equipment, vehicles, people, structures and scene context;
+- diagrams, figures, components, labels, arrows and spatial relationships;
+- tables, charts and symbols when clearly visible;
+- visible text that may help identify or describe the content.
 
-Do not guess hidden values, specifications, identities, locations, or meanings.
-If something is unreadable, say so. Return a concise, information-dense
-description suitable for a private retrieval knowledge base.
+Do not invent specifications, identities, model numbers, locations, capabilities,
+measurements or relationships that cannot be clearly observed. If a detail is
+unclear or too small to verify, explicitly say it is unclear.
 
-OCR text from this page:
+Return a concise, information-dense description suitable for indexing in a
+private retrieval-augmented generation knowledge base. Do not discuss this
+instruction or the OCR process.
+
+Additional OCR hint, which may be incomplete or empty:
 {ocr_hint}
 """.strip()
 
-    print(f"VISION: page {page_number} started")
+    print(f"MOONDREAM: {page_number} started using {MOONDREAM_MODEL}")
 
     response = client.chat(
-        model=VISION_MODEL,
+        model=MOONDREAM_MODEL,
         messages=[
             {
                 "role": "user",
@@ -61,8 +74,7 @@ OCR text from this page:
         ],
         stream=False,
         options={
-            "temperature": 0.1,
-            "num_ctx": 4096,
+            "temperature": 0.0,
             "num_predict": 350,
         },
     )
@@ -74,5 +86,5 @@ OCR text from this page:
         content = response.get("message", {}).get("content", "")
 
     result = str(content or "").strip()
-    print(f"VISION: page {page_number} completed ({len(result)} chars)")
+    print(f"MOONDREAM: {page_number} completed ({len(result)} chars)")
     return result

@@ -42,7 +42,6 @@ def _configure_tesseract():
     # Common Windows installation locations
     possible_paths = [
         Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
-        Path(r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe"),
         Path(os.getenv("LOCALAPPDATA", "")) / "Programs" / "Tesseract-OCR" / "tesseract.exe",
     ]
 

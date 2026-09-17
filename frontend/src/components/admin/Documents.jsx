@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { Upload, Download, Trash2, FileText, Shield, FileArchive, LockKeyhole, FolderOpen, RefreshCw, AlertTriangle } from "lucide-react";
+import { Upload, Download, Trash2, FileText, Shield, FileArchive, LockKeyhole, FolderOpen, RefreshCw, AlertTriangle, Image as ImageIcon } from "lucide-react";
 import useTheme from "../../hooks/useTheme";
 import { getAdminDocuments, downloadAdminDocument, deleteAdminDocument } from "../../api/adminApi";
 import { uploadDocument } from "../../api/documentApi";
@@ -11,6 +11,7 @@ export default function Documents() {
   const [documents, setDocuments] = useState([]);
   const [classification, setClassification] =
     useState("Public");
+  const [repositoryFilter, setRepositoryFilter] = useState("all");
 
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
@@ -217,6 +218,12 @@ export default function Documents() {
       return FileArchive;
     }
 
+    if (
+      ["jpg", "jpeg", "png", "webp", "avif", "bmp", "gif", "tif", "tiff"].includes(extension)
+    ) {
+      return ImageIcon;
+    }
+
     return FileText;
   };
 
@@ -234,6 +241,22 @@ export default function Documents() {
   const secretDocuments = documents.filter(
     (doc) => doc.classification === "Secret"
   ).length;
+
+  const imageDocuments = documents.filter((doc) =>
+    [".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".gif", ".tif", ".tiff"].includes(
+      (doc.file_type || "").toLowerCase()
+    )
+  ).length;
+
+  const filteredDocuments = documents.filter((doc) => {
+    const isImage = [
+      ".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".gif", ".tif", ".tiff",
+    ].includes((doc.file_type || "").toLowerCase());
+
+    if (repositoryFilter === "images") return isImage;
+    if (repositoryFilter === "documents") return !isImage;
+    return true;
+  });
 
   if (loading) {
     return (
@@ -305,8 +328,7 @@ export default function Documents() {
                     : "text-gray-400"
                 }`}
               >
-                Manage classified defence documents
-                and their access levels.
+                Manage classified defence documents, images, and their access levels.
               </p>
             </div>
           </div>
@@ -328,7 +350,7 @@ export default function Documents() {
       </div>
 
       {/* Statistics */}
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
 
         <div
           className={`rounded-2xl border p-5 transition hover:-translate-y-1 hover:shadow-md ${
@@ -474,6 +496,36 @@ export default function Documents() {
           </div>
         </div>
 
+        <div
+          className={`rounded-2xl border p-5 transition hover:-translate-y-1 hover:shadow-md ${
+            theme === "light"
+              ? "border-gray-200 bg-white"
+              : "border-white/10 bg-[#171717]"
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div>
+              <p
+                className={`text-sm ${
+                  theme === "light" ? "text-gray-500" : "text-gray-400"
+                }`}
+              >
+                Images
+              </p>
+              <p className="mt-2 text-3xl font-bold">{imageDocuments}</p>
+            </div>
+            <div
+              className={`flex h-11 w-11 items-center justify-center rounded-xl ${
+                theme === "light"
+                  ? "bg-purple-100 text-purple-600"
+                  : "bg-purple-500/10 text-purple-400"
+              }`}
+            >
+              <ImageIcon size={21} />
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Upload Panel */}
@@ -497,7 +549,7 @@ export default function Documents() {
 
           <div>
             <h2 className="font-semibold">
-              Upload Document
+              Upload Document or Image
             </h2>
 
             <p
@@ -507,8 +559,7 @@ export default function Documents() {
                   : "text-gray-400"
               }`}
             >
-              Select the appropriate classification
-              before uploading.
+              Select the appropriate classification before uploading. PDFs and documents with images are processed with Tesseract OCR + Moondream visual analysis.
             </p>
           </div>
         </div>
@@ -552,14 +603,14 @@ export default function Documents() {
 
             {uploading
               ? "Uploading & Indexing..."
-              : "Choose Document"}
+              : "Choose File"}
           </button>
 
           <input
             ref={fileInputRef}
             hidden
             type="file"
-            accept=".pdf,.docx,.txt,.xls,.xlsx"
+            accept=".pdf,.docx,.txt,.xls,.xlsx,.jpg,.jpeg,.png,.webp,.avif,.bmp,.gif,.tif,.tiff"
             onChange={handleUpload}
           />
         </div>
@@ -612,6 +663,42 @@ export default function Documents() {
           </div>
         </div>
 
+        {/* Repository Sections */}
+        <div className={`flex flex-wrap gap-2 border-b px-6 py-4 ${
+          theme === "light" ? "border-gray-200" : "border-white/10"
+        }`}>
+          {[
+            ["all", "All Files", totalDocuments],
+            ["documents", "Documents", totalDocuments - imageDocuments],
+            ["images", "Images", imageDocuments],
+          ].map(([value, label, count]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setRepositoryFilter(value)}
+              className={`inline-flex items-center gap-2 rounded-lg border px-3.5 py-2 text-xs font-semibold transition ${
+                repositoryFilter === value
+                  ? theme === "light"
+                    ? "border-blue-200 bg-blue-50 text-blue-700"
+                    : "border-blue-500/30 bg-blue-500/10 text-blue-300"
+                  : theme === "light"
+                    ? "border-gray-200 bg-white text-gray-600 hover:bg-gray-50"
+                    : "border-white/10 bg-white/[0.03] text-gray-400 hover:bg-white/[0.06]"
+              }`}
+            >
+              {value === "images" ? <ImageIcon size={14} /> : <FileText size={14} />}
+              {label}
+              <span
+                className={`rounded-full px-1.5 py-0.5 text-[10px] ${
+                  theme === "light" ? "bg-black/5" : "bg-white/10"
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          ))}
+        </div>
+
         <div className="overflow-x-auto">
           <table className="w-full min-w-[850px]">
 
@@ -646,7 +733,7 @@ export default function Documents() {
             </thead>
 
             <tbody>
-              {documents.map((document) => {
+              {filteredDocuments.map((document) => {
                 const classificationConfig =
                   getClassificationConfig(
                     document.classification
@@ -702,6 +789,9 @@ export default function Documents() {
                                   ""
                                 )
                               : "FILE"}
+                            {[".jpg", ".jpeg", ".png", ".webp", ".avif", ".bmp", ".gif", ".tif", ".tiff"].includes(
+                              (document.file_type || "").toLowerCase()
+                            ) && " • OCR + MOONDREAM"}
                           </p>
                         </div>
                       </div>
@@ -822,7 +912,7 @@ export default function Documents() {
                 );
               })}
 
-              {documents.length === 0 && (
+              {filteredDocuments.length === 0 && (
                 <tr>
                   <td
                     colSpan={5}
@@ -841,7 +931,7 @@ export default function Documents() {
                       </div>
 
                       <h3 className="font-semibold">
-                        No documents found
+                        No files found
                       </h3>
 
                       <p
@@ -851,7 +941,7 @@ export default function Documents() {
                             : "text-gray-400"
                         }`}
                       >
-                        Upload a classified document
+                        Upload a classified document or image
                         using the upload panel above.
                       </p>
                     </div>

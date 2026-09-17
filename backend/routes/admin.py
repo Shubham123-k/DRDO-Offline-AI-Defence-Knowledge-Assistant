@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from database.db import get_db
 from auth.dependencies import get_current_user
-from auth.hashing import hash_password
+from auth.hashing import hash_password, verify_password
 
 from models.user import User
 from models.document import Document
@@ -29,6 +29,30 @@ class UpdateUserRequest(BaseModel):
     role: str
     clearance: str
     status: str
+
+
+class AdminPasswordRequest(BaseModel):
+    admin_password: str
+
+
+class SecurePasswordResetRequest(BaseModel):
+    admin_password: str
+    new_password: str
+    confirm_password: str
+
+
+def verify_admin_password(current_user, admin_password: str):
+    if not admin_password:
+        raise HTTPException(
+            status_code=400,
+            detail="Administrator password is required.",
+        )
+
+    if not verify_password(admin_password, current_user.password):
+        raise HTTPException(
+            status_code=401,
+            detail="Administrator password is incorrect.",
+        )
 
 
 CLEARANCES = {
@@ -154,6 +178,117 @@ def create_secure_user(
             "status": secure_user.status,
         },
     }
+
+@router.post("/secure-details/verify")
+def get_secure_details(
+    request: AdminPasswordRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Re-authenticate the administrator before exposing the
+    usernames/emails of Confidential and Secret accounts.
+
+    Password hashes are never returned. Passwords are deliberately
+    not reversible in this application; recovery is handled through
+    an administrator-authorized password reset endpoint below.
+    """
+    require_admin(current_user)
+    verify_admin_password(current_user, request.admin_password)
+
+    users = (
+        db.query(User)
+        .filter(
+            User.clearance.in_(["Confidential", "Secret"]),
+            User.role != "Admin",
+        )
+        .order_by(User.clearance.desc(), User.username.asc())
+        .all()
+    )
+
+    create_audit_log(
+        db=db,
+        user=current_user,
+        action="VIEW_SECURE_DETAILS",
+        details="Administrator re-authenticated and viewed secure account details.",
+    )
+
+    return {
+        "users": [
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "clearance": user.clearance,
+                "status": user.status,
+                "is_active": user.is_active,
+            }
+            for user in users
+        ]
+    }
+
+
+@router.post("/secure-details/{user_id}/reset-password")
+def reset_secure_user_password(
+    user_id: int,
+    request: SecurePasswordResetRequest,
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user),
+):
+    """
+    Secure recovery for Confidential/Secret users.
+
+    Existing passwords are stored as one-way bcrypt hashes and cannot
+    be displayed or recovered. After a second administrator
+    re-authentication, the administrator can set a new password.
+    """
+    require_admin(current_user)
+    verify_admin_password(current_user, request.admin_password)
+
+    if len(request.new_password) < 8:
+        raise HTTPException(
+            status_code=400,
+            detail="New password must contain at least 8 characters.",
+        )
+
+    if request.new_password != request.confirm_password:
+        raise HTTPException(
+            status_code=400,
+            detail="New password and confirm password do not match.",
+        )
+
+    user = (
+        db.query(User)
+        .filter(User.id == user_id)
+        .first()
+    )
+
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if user.role.lower() == "admin" or user.clearance not in {"Confidential", "Secret"}:
+        raise HTTPException(
+            status_code=403,
+            detail="Password reset is available only for Confidential and Secret user accounts.",
+        )
+
+    user.password = hash_password(request.new_password)
+    db.commit()
+
+    create_audit_log(
+        db=db,
+        user=current_user,
+        action="ADMIN_RESET_SECURE_USER_PASSWORD",
+        details=(
+            f"Administrator reset the password for secure user "
+            f"{user.username} ({user.clearance})."
+        ),
+    )
+
+    return {
+        "message": f"Password reset successfully for {user.username}.",
+    }
+
 
 @router.get("/pending")
 def get_pending_users(

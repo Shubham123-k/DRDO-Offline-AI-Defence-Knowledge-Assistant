@@ -82,6 +82,16 @@ ALLOWED_EXTENSIONS = {
     ".txt",
     ".xls",
     ".xlsx",
+    # Common raster image formats supported by Pillow.
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".webp",
+    ".avif",
+    ".bmp",
+    ".gif",
+    ".tif",
+    ".tiff",
 }
 
 
@@ -200,8 +210,8 @@ def upload_document(
             status_code=400,
             detail=(
                 "Unsupported file type. "
-                "Allowed files: PDF, DOCX, TXT, "
-                "XLS and XLSX."
+                "Allowed files: PDF, DOCX, TXT, XLS, XLSX, "
+                "JPG, JPEG, PNG, WEBP, AVIF, BMP, GIF, TIF and TIFF."
             ),
         )
 
@@ -272,6 +282,7 @@ def upload_document(
             ),
             "document_id": document.id,
             "filename": original_filename,
+            "file_type": extension,
             "classification": classification,
             "chunks": ingestion["chunks"],
             "pages": ingestion.get("pages", 0),

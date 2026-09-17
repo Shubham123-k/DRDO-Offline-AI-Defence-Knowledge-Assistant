@@ -9,6 +9,7 @@ import AuditLogs from "./AuditLogs";
 import Settings from "../../pages/Settings";
 import useTheme from "../../hooks/useTheme";
 import SecureUsers from "./SecureUsers";
+import SecureDetails from "./SecureDetails";
 
 export default function AdminLayout() {
   const { theme } = useTheme();
@@ -28,6 +29,9 @@ export default function AdminLayout() {
 
       case "secure-users":
         return <SecureUsers />;
+
+      case "secure-details":
+        return <SecureDetails />;
 
       case "documents":
         return <Documents />;
