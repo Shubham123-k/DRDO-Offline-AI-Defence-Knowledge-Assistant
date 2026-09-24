@@ -1,0 +1,72 @@
+# ==============================
+# DRDO AI – Offline Assistant
+# Git ignore rules
+# ==============================
+
+# Environment / secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.venv/
+venv/
+env/
+
+# Python local metadata
+*.egg-info/
+build/
+dist/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+.npm/
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Local application data
+backend/drdo_ai.db
+backend/*.db
+backend/*.sqlite
+backend/*.sqlite3
+backend/chroma_db/
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Logs / temporary files
+*.log
+*.tmp
+*.temp
+
+# Local model/cache directories
+models/
+model_cache/
+.cache/
+
+# Test artifacts
+.pytest_cache/
+coverage.xml
+
+# OS files
+Desktop.ini
