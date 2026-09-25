@@ -66,10 +66,17 @@ export default function SignIn() {
     } catch (error) {
       console.error("Login failed:", error);
 
-      alert(
-        error?.response?.data?.detail ||
-          "Login failed. Please check your credentials."
-      );
+      if (!error?.response) {
+        alert(
+          "Unable to connect to the DRDO AI Assistant server. " +
+            "Please make sure the FastAPI backend is running on port 8000."
+        );
+      } else {
+        alert(
+          error.response.data?.detail ||
+            "Login failed. Please check your credentials."
+        );
+      }
     } finally {
       setLoading(false);
     }
